@@ -1,0 +1,11 @@
+Project Description
+
+As part of the module Introduction to Python, a web-based financial planning system will be developed that enables users to manage their monthly finances in a structured and transparent way. The objective of the project is to design an application that allows personal income, expenses, and budgets to be recorded, managed, and analyzed in a clear and organized manner. The focus lies both on the proper modeling of financial data and on the technical implementation of a user-specific web application.
+
+The application allows registered users to store fixed monthly income such as salaries or other regular sources of income. In addition, monthly expenses can be recorded, for example for rent, groceries, insurance, or transportation. These income and expense entries are assigned to different categories in order to ensure a clear structure and improved analyzability. Based on this data, a monthly overview is generated that transparently displays total income, total expenses, and the available balance.
+
+A central feature of the application is the use of so-called contingents or budget pots. These enable users to define monthly budget amounts for specific purposes, such as a car, vacation, or leisure activities. Regular deposits can be made into these budget pots, while withdrawals are also possible, for example in the case of unexpected expenses such as repairs. The current balance of each budget pot is continuously calculated and visualized, allowing users to see at any time how much money is still available.
+
+The monthly budget amounts as well as individual deposits and withdrawals can be adjusted flexibly. Changes to these values are dynamically reflected in all relevant calculations, while the consistency of the stored data is maintained at all times. This also allows different financial scenarios to be modeled and analyzed.
+
+The application is implemented as a web application with user registration and login functionality, enabling multiple users to manage their finances independently from one another. The backend of the application is implemented in Python and uses a relational database for persistent storage of user data. The goal of the project is to practically apply and deepen fundamental concepts of software development with Python, in particular data modeling, web development, and secure user management.
