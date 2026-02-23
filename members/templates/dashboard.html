@@ -1,0 +1,19 @@
+<h1>Dashboard</h1>
+
+<p>Hallo {{ request.user.member.nickname }} 👋</p>
+
+<p>Du bist erfolgreich eingeloggt.</p>
+
+<form action="{% url 'logout' %}" method="post">
+  {% csrf_token %}
+  <button type="submit">Logout</button>
+
+</form >
+<form action="{% url 'dashboard' %}" method="post">
+  {%csrf_token%}
+  <label for="fname">First name:</label><br>
+  <input type="text" name="fname" ><br> <!--input box send name to server-->
+  <input type="submit" value="Submit"> <!--submit button-->
+</form>   
+
+<h1>{{ value_from_input }}</h1>

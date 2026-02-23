@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtualenv
+bin/
+lib/
+lib64/
+include/
+pyvenv.cfg
+
+# Database
+db.sqlite3
+
+# IDE
+.idea/
+.vscode/
