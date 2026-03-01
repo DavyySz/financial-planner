@@ -1,6 +1,26 @@
+
+
+<style>
+.myDiv {
+  border: 1px outset red;
+  background-color: lightblue;
+  text-align: left;
+  margin: 10x;
+  width: 20;
+  height: 20;
+}
+
+.Box_contents {
+  font-size: 11px;
+  text-align: center;
+  margin-top: 4px;
+}
+</style>
+
+
 <h1>Dashboard</h1>
 
-<p>Hallo {{ request.user.member.nickname }} 👋</p>
+<p>Hallo {{ request.user.member }} 👋</p>
 
 <p>Du bist erfolgreich eingeloggt.</p>
 
@@ -11,9 +31,63 @@
 </form >
 <form action="{% url 'dashboard' %}" method="post">
   {%csrf_token%}
-  <label for="fname">First name:</label><br>
-  <input type="text" name="fname" ><br> <!--input box send name to server-->
+  <label for="category_name">Kategorie:</label><br>
+
+  <input type="text" name="category_name" placeholder="Name der Kategorie"><br> <!--input box send category to server-->
+  <input type="text" name="monthly_amount" placeholder="monatliche Einzahlung in €"><br> <!--input box send monthly_amount to server-->
+  <input type="text" name="comment" placeholder="Kommentar"><br> <!--input box send comment to server-->
+
   <input type="submit" value="Submit"> <!--submit button-->
 </form>   
 
-<h1>{{ value_from_input }}</h1>
+{%if attributes == "false" %}
+  <script>alert("Name der Kategorie und monatliche Einzahlungen müssen ausgefüllt werden")</script>
+{% elif attributes == "category_string_to_long" %}
+  <script>alert("der Name der Kategorie ist zu lang maximal 25 Zeichen")</script>
+{% else %}
+<div style="display: flex">
+
+  <div>
+
+    <div class="myDiv" style="width:200px">
+    <p class="Box_contents">Kategorie</p>
+    </div>
+
+    {%for x in attributes %}
+    <div class="myDiv" style="width:200px; display: flex">
+    <a href="url">{{x.category}}</a>
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <div>
+
+    <div class="myDiv" style="width:200px">
+    <p class="Box_contents">Einzahlungsrate pro Monat</p>
+    </div>
+
+    {%for x in attributes %}
+    <div class="myDiv" style="width:200px">
+    <p class="Box_contents">{{x.monthly_amount}}€</p>
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <div>
+
+    <div class="myDiv" style="width:200px">
+    <p class="Box_contents">Monate seit denen eingezahlt wird</p>
+    </div>
+
+    {%for x in attributes %}
+    <div class="myDiv" style="width:200px">
+    <p class="Box_contents">{{x.How_many_months_have_passed_since_the_category_was_created}}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+{% endif %}
