@@ -18,7 +18,7 @@ def past_months_since_deposit(attributes):
             months_in_the_current_year = date_this_moment.month
             past_months_since_deposit = months_to_next_year + months_in_the_current_year
 
-        elif (x.date_now.year - x.creation_date_of_the_category.year) >= 2:
+        elif (x.date_now.year - x.creation_date_of_the_category.year) >= 2: # if at least 2 years have passed since the category was created
             full_months_from_creation_to_the_next_full_year = (12 - x.creation_date_of_the_category.month) + 1
 
             full_months_since_creation_in_full_years = ((x.date_now.year - x.creation_date_of_the_category.year) - 1) * 12

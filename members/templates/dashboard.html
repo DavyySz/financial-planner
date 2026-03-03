@@ -15,6 +15,19 @@
   text-align: center;
   margin-top: 4px;
 }
+
+.input_form {
+  border: 1px outset red;
+  background-color: lightblue;
+  display: inline-block;
+  width: 200px;
+  margin-bottom: 3px;
+  margin-right: -4px;
+}
+
+.input_box {
+  position: relative;left: 2px;
+}
 </style>
 
 
@@ -27,18 +40,44 @@
 <form action="{% url 'logout' %}" method="post">
   {% csrf_token %}
   <button type="submit">Logout</button>
-
 </form >
+
+<div class="input_form">
 <form action="{% url 'dashboard' %}" method="post">
   {%csrf_token%}
-  <label for="category_name">Kategorie:</label><br>
+
+  <div class="input_box">
+  <label for="category_name">neue Kategorie:</label><br>
 
   <input type="text" name="category_name" placeholder="Name der Kategorie"><br> <!--input box send category to server-->
   <input type="text" name="monthly_amount" placeholder="monatliche Einzahlung in €"><br> <!--input box send monthly_amount to server-->
   <input type="text" name="comment" placeholder="Kommentar"><br> <!--input box send comment to server-->
 
   <input type="submit" value="Submit"> <!--submit button-->
-</form>   
+  </div>
+
+</form>
+</div>
+
+
+<div class="input_form">
+</form >
+<form action="{% url 'dashboard' %}" method="post">
+  {%csrf_token%}
+
+  <div class="input_box">
+  <label for="category_name">neue Einzahlung:</label><br>
+
+  <input type="text" name="category_name" placeholder="Name der Kategorie"><br> <!--input box send category to server-->
+  <input type="text" name="monthly_amount" placeholder="Einzahlung in € (+/-)"><br> <!--input box send monthly_amount to server-->
+  <input type="text" name="comment" placeholder="Kommentar"><br> <!--input box send comment to server-->
+
+  <input type="submit" value="Submit"> <!--submit button-->
+    </div>
+
+</form>
+</div>
+
 
 {%if attributes == "false" %}
   <script>alert("Name der Kategorie und monatliche Einzahlungen müssen ausgefüllt werden")</script>
@@ -64,7 +103,7 @@
   <div>
 
     <div class="myDiv" style="width:200px">
-    <p class="Box_contents">Einzahlungsrate pro Monat</p>
+    <p class="Box_contents">Einzahlungsrate pro Monat (aktuell)</p>
     </div>
 
     {%for x in attributes %}

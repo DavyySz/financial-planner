@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 import datetime
 from .date import past_months_since_deposit
+from django.contrib.postgres.fields import ArrayField
 
 
 def members(request):
@@ -59,10 +60,11 @@ def dashboard(request):
           index_of_new_cathegory = request.user.member.attributes.count() + 1
           new_key = "cathegory" + str(index_of_new_cathegory)
 
+          date_today = datetime.date.today()
           request.user.member.attributes.create(key=new_key, category=value_from_input,monthly_amount=value_monthly_amount, comment=value_comment, creation_date_of_the_category = date_today)
           attributes = request.user.member.attributes.all()
           creation_date =request.user.member.attributes.filter(key=new_key).values_list("creation_date_of_the_category", flat=True).first()
-          date_today = datetime.date.today()
+
 
           past_months_since_deposit(attributes)
         else:
