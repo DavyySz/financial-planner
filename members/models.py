@@ -1,8 +1,12 @@
+from typing import List
+
 from django.db import models
 from django.contrib.auth.models import User
 from datetime import date
 from django.db.models import F
 from django.contrib.postgres.fields import ArrayField
+from decimal import Decimal
+
 
 # Create your models here.
 class Member(models.Model):
@@ -21,7 +25,8 @@ class MemberAttribute(models.Model):
     key = models.CharField(max_length=50)
     category = models.CharField(max_length=36)
 
-    monthly_amount = models.JSONField(models.DecimalField(max_digits=15, decimal_places=2), null=True, blank=True)
+    monthly_amount = ArrayField(models.DecimalField(max_digits=15, decimal_places=2), default=list, blank=True)
+    monthly_amount_value = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
     index_monthly_amount = models.IntegerField(default=0)
 
     total_amount_of_money_in_the_category = models.DecimalField(max_digits=15,decimal_places=2, null=True, blank=True)
@@ -32,4 +37,6 @@ class MemberAttribute(models.Model):
     date_now = models.DateTimeField(null=True)
     How_many_months_have_passed_since_the_category_was_created = models.IntegerField(null=True)
     number_of_changes_deposit_amount = models.IntegerField(null=True, blank=True)
+
+    false_var = models.BooleanField(default=True)
 

@@ -49,9 +49,9 @@
   <div class="input_box">
   <label for="category_name">neue Kategorie:</label><br>
 
-  <input type="text" name="category_name" placeholder="Name der Kategorie"><br> <!--input box send category to server-->
-  <input type="text" name="monthly_amount" placeholder="monatliche Einzahlung in €"><br> <!--input box send monthly_amount to server-->
-  <input type="text" name="comment" placeholder="Kommentar"><br> <!--input box send comment to server-->
+  <input type="text" required name="category_name" placeholder="Name der Kategorie" maxlength="25" pattern="[A-Za-z ]+"><br> <!--input box send category to server-->
+  <input type="text" required name="monthly_amount" placeholder="monatliche Einzahlung in €" maxlength="13" pattern="[0-9.-]+"><br> <!--input box send monthly_amount to server-->
+  <input type="text"  name="comment" placeholder="Kommentar" maxlength="50" pattern="[A-Za-z0-9!?]+"><br> <!--input box send comment to server-->
 
   <input type="submit" value="Submit"> <!--submit button-->
   </div>
@@ -68,9 +68,9 @@
   <div class="input_box">
   <label for="category_name">neue Einzahlung:</label><br>
 
-  <input type="text" name="category_name" placeholder="Name der Kategorie"><br> <!--input box send category to server-->
-  <input type="text" name="monthly_amount" placeholder="Einzahlung in € (+/-)"><br> <!--input box send monthly_amount to server-->
-  <input type="text" name="comment" placeholder="Kommentar"><br> <!--input box send comment to server-->
+  <input type="text" name="category_name_new" placeholder="Name der Kategorie" pattern="[A-Za-z ]+"><br>
+  <input type="text" name="monthly_amount_new" placeholder="Einzahlung in € (+/-)" pattern="[0-9.-]+"><br>
+  <input type="text" name="comment_change" placeholder="Kommentar" pattern="[A-Za-z0-9!?]+"><br>
 
   <input type="submit" value="Submit"> <!--submit button-->
     </div>
@@ -81,9 +81,10 @@
 
 {%if attributes == "false" %}
   <script>alert("Name der Kategorie und monatliche Einzahlungen müssen ausgefüllt werden")</script>
-{% elif attributes == "category_string_to_long" %}
+{% elif false_var == "category_string_to_long" %}
   <script>alert("der Name der Kategorie ist zu lang maximal 25 Zeichen")</script>
 {% else %}
+
 <div style="display: flex">
 
   <div>
@@ -94,7 +95,7 @@
 
     {%for x in attributes %}
     <div class="myDiv" style="width:200px; display: flex">
-    <a href="url">{{x.category}}</a>
+    <a href=/dashboard/change_data/?category={{x.category}}>{{x.category}}</a>
     </div>
     {% endfor %}
 
@@ -108,7 +109,7 @@
 
     {%for x in attributes %}
     <div class="myDiv" style="width:200px">
-    <p class="Box_contents">{{x.monthly_amount}}€</p>
+    <p class="Box_contents">{{x.monthly_amount_value}}€</p>
     </div>
     {% endfor %}
 

@@ -6,5 +6,6 @@ urlpatterns = [
     path('members/', views.members, name='members'),
     path('members/details/<int:id>', views.details, name='details'),
     path('testing/', views.testing, name='testing'),
-    path('double_bracket', views.double_bracket, name='double_bracket')
+    path('double_bracket', views.double_bracket, name='double_bracket'),
+    path('dashboard/change_data/', views.change_data, name='change_data')
 ]
