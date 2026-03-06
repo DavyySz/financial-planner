@@ -5,6 +5,6 @@
 <form action=/dashboard/change_data method="get">
   <label for="category_name">monatlicher Einzahlungsbetrag ändern:</label><br>
   <input type="text" name="monthly_amount_new" placeholder="Einzahlung in € (+/-)" pattern="[0-9.-]+" required><br>
-  <input type="text" name="comment_change" placeholder="Kommentar" pattern="[A-Za-z0-9!?]+"><br>
+  <input type="text" name="comment_change" placeholder="Kommentar" pattern="[A-Za-z0-9!? ]+"><br>
   <button type="submit" name="category_string" value={{category_string}}>submit</button> <!--submit button-->
 </form>

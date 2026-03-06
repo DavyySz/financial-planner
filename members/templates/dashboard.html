@@ -51,9 +51,8 @@
 
   <input type="text" required name="category_name" placeholder="Name der Kategorie" maxlength="25" pattern="[A-Za-z ]+"><br> <!--input box send category to server-->
   <input type="text" required name="monthly_amount" placeholder="monatliche Einzahlung in €" maxlength="13" pattern="[0-9.-]+"><br> <!--input box send monthly_amount to server-->
-  <input type="text"  name="comment" placeholder="Kommentar" maxlength="50" pattern="[A-Za-z0-9!?]+"><br> <!--input box send comment to server-->
-
-  <input type="submit" value="Submit"> <!--submit button-->
+  <input type="text"  name="comment" placeholder="Kommentar" maxlength="50" pattern="[A-Za-z0-9!? ]+"><br> <!--input box send comment to server-->
+    <button type="submit" name="id_of_user" value={{ request.user.member.id }}>Submit</button>
   </div>
 
 </form>

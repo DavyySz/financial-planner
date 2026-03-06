@@ -38,5 +38,6 @@ class MemberAttribute(models.Model):
     How_many_months_have_passed_since_the_category_was_created = models.IntegerField(null=True)
     number_of_changes_deposit_amount = models.IntegerField(null=True, blank=True)
 
+
     false_var = models.BooleanField(default=True)
 
