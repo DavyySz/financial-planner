@@ -1,3 +1,4 @@
+
 from pdb import find_function
 from unicodedata import category
 
@@ -12,6 +13,7 @@ from django.shortcuts import render, redirect
 import datetime
 from .date import past_months_since_deposit
 from .Calculate_monthly_payments import Calculate_monthly_payments
+from .Check_whether_category_is_duplicated import Check_whether_category_is_duplicated
 from django.contrib.postgres.fields import ArrayField
 from decimal import Decimal
 
@@ -63,7 +65,9 @@ def dashboard(request):
 
 
       if "value_from_input" in locals():
-
+        duplicate_variable = Check_whether_category_is_duplicated(value_from_input)
+        if duplicate_variable == False:
+          return HttpResponse('<script>alert("Kategorien dürfen nicht doppelt sein"); window.history.back();</script>')
         if value_from_input != "" and value_monthly_amount != "":
           index_of_new_cathegory = request.user.member.attributes.count() + 1
           new_key = "cathegory" + str(index_of_new_cathegory)
@@ -112,9 +116,6 @@ def change_data(request):
     Calculate_monthly_payments(attributes)
 
     #Calculate_new_monthly_payments(attributes, monthly_amount_new, comment_change, category_string, date_today, category_picked, index_this_moment, index_after_change)
-
-
-
 
 
     template = loader.get_template('change_data.html')
