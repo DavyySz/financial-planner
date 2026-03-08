@@ -144,12 +144,26 @@
   <div>
 
     <div class="myDiv" style="width:200px">
-    <p class="Box_contents">eingezahlte Monatsraten</p>
+    <p class="Box_contents">Gesamtbetrag</p>
     </div>
 
     {%for x in attributes %}
     <div class="myDiv" style="width:200px">
     <p class="Box_contents">{{x.new_amount}}</p>
+    </div>
+    {% endfor %}
+
+  </div>
+
+    <div>
+
+    <div class="myDiv" style="width:200px">
+    <p class="Box_contents">Kommentar</p>
+    </div>
+
+    {%for x in attributes %}
+    <div class="myDiv" style="width:200px">
+    <p class="Box_contents">{{x.comment}}</p>
     </div>
     {% endfor %}
 

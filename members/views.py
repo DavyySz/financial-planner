@@ -102,8 +102,8 @@ def dashboard(request):
       category_name_new = request.GET.get("category_name_new")
       monthly_amount_new = request.GET.get("monthly_amount_new")
       if category_name_new != None and monthly_amount_new != None:
-        category_name = request.GET.get("category_name_new")
-        new_amount = request.GET.get("monthly_amount_new")
+        category_name = category_name_new
+        new_amount = monthly_amount_new
         is_there = calculate_full_money_amount(attributes, category_name, new_amount)
         if is_there == False:
             return HttpResponse('<script>alert("Kategorie gibt es nicht"); window.history.back();</script>')
