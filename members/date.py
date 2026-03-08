@@ -34,4 +34,6 @@ def past_months_since_deposit(attributes):
     return 0
 
 
-
+def calculate_total_amount_of_monthly_payments(attributes):
+    for x in attributes:
+        pass

@@ -12,7 +12,11 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 import datetime
 from .date import past_months_since_deposit
+from .date import calculate_total_amount_of_monthly_payments
 from .Calculate_monthly_payments import Calculate_monthly_payments
+from .Calculate_monthly_payments import total_amount_of_monthly_payments
+from .Calculate_monthly_payments import calculate_full_money_amount
+
 from .Check_whether_category_is_duplicated import Check_whether_category_is_duplicated
 from django.contrib.postgres.fields import ArrayField
 from decimal import Decimal
@@ -54,6 +58,7 @@ def dashboard(request):
     if request.method == "POST":
 
 
+
       if len(request.POST.get("category_name")) <= 25 and request.POST.get("monthly_amount") != "":
         value_from_input = request.POST.get("category_name")
         value_monthly_amount = Decimal(request.POST.get("monthly_amount"))
@@ -73,10 +78,16 @@ def dashboard(request):
           new_key = "cathegory" + str(index_of_new_cathegory)
 
           date_today = datetime.date.today()
-          request.user.member.attributes.create(key=new_key, category=value_from_input, monthly_amount=[value_monthly_amount], comment=value_comment, creation_date_of_the_category = date_today, index_monthly_amount = 0)
+          monthly_amount_array=[[]]
+          monthly_amount_array[0].insert(0,int(value_monthly_amount))
+          monthly_amount_array[0].insert(1, date_today.year)
+          monthly_amount_array[0].insert(2, date_today.month)
+
+          request.user.member.attributes.create(key=new_key, category=value_from_input, monthly_amount=monthly_amount_array, comment=value_comment, creation_date_of_the_category = date_today, index_monthly_amount = 0)
           attributes = request.user.member.attributes.all()
 
           past_months_since_deposit(attributes.order_by("id"))
+          total_amount_of_monthly_payments(attributes.order_by("id"))
           #Calculate_monthly_payments(attributes)
           return redirect("dashboard")
 
@@ -86,6 +97,20 @@ def dashboard(request):
       attributes = request.user.member.attributes.order_by("id")
       Calculate_monthly_payments(attributes.order_by("id"))
       past_months_since_deposit(attributes.order_by("id"))
+      total_amount_of_monthly_payments(attributes.order_by("id"))
+
+      category_name_new = request.GET.get("category_name_new")
+      monthly_amount_new = request.GET.get("monthly_amount_new")
+      if category_name_new != None and monthly_amount_new != None:
+        category_name = request.GET.get("category_name_new")
+        new_amount = request.GET.get("monthly_amount_new")
+        is_there = calculate_full_money_amount(attributes, category_name, new_amount)
+        if is_there == False:
+            return HttpResponse('<script>alert("Kategorie gibt es nicht"); window.history.back();</script>')
+      else:
+         category_name = False
+         new_amount = False
+         calculate_full_money_amount(attributes, category_name, new_amount)
 
       return render(request, 'dashboard.html', {"attributes": attributes}) # html on left side / python on right side
 
@@ -100,20 +125,37 @@ def change_data(request):
     comment_change =request.GET.get("comment_change") # comment for the change (optional for the user)
     category_string = request.GET.get("category_string")# name of the category
     date_today = datetime.date.today()
+    total_amount_of_monthly_payments_all = total_amount_of_monthly_payments(attributes)  # the amount paid in monthly installments
 
     category_picked = request.user.member.attributes.values_list("key", flat=True).get(category=category_string)  # key
     #index_this_moment = request.user.member.attributes.values_list("index_monthly_amount", flat=True).get(category=category_string)
 
     r = request.user.member.attributes.get(key=category_picked)
-    r.monthly_amount.append(monthly_amount_new)
+    #r.monthly_amount[0].append(monthly_amount_new)
     # r.monthly_amount[index_after_change] = monthly_amount_new
     request.user.member.save()
     r.save()
-    index_after_change = len(request.user.member.attributes.values_list("monthly_amount", flat=True).get(key=category_picked)) - 1
-    r.index_monthly_amount = index_after_change
-    request.user.member.save()
-    r.save()
+    #index_after_change = len(request.user.member.attributes.values_list("monthly_amount", flat=True).get(key=category_picked)) - 1
+    #r.index_monthly_amount = index_after_change
+    year_ = Decimal(date_today.year)
+    month_ = Decimal(date_today.month)
+    monthly_amount_to_append = [Decimal(monthly_amount_new),year_,month_]
+    if int(monthly_amount_to_append[2]) == int(r.monthly_amount[-1][2]) and int(monthly_amount_to_append[0] != int(r.monthly_amount[-1][0])): # if value of monthly amount (was changed) in the same month as the last update of the value but the value is different
+      r.monthly_amount[-1][0] = monthly_amount_to_append[0]
+      r.save()
+
+
+    if int(monthly_amount_to_append[2]) == int(r.monthly_amount[-1][2]) and int(monthly_amount_to_append[0] == int(r.monthly_amount[-1][0])): # if value of monthly amount (was changed) in the same month as the last update of the value but the value is same
+      pass
+
+    if int(monthly_amount_to_append[2]) != int(r.monthly_amount[-1][2]): # if value of monthly amount (was changed) in different month as the last update
+      r.monthly_amount[index_after.append[monthly_amount_new, year_, month_]]
+      r.monthly_amount.append(monthly_amount_to_append)
+      request.user.member.save()
+      r.save()
+
     Calculate_monthly_payments(attributes)
+    #total_amount_of_monthly_payments_all = total_amount_of_monthly_payments(attributes) # the amount paid in monthly installments
 
     #Calculate_new_monthly_payments(attributes, monthly_amount_new, comment_change, category_string, date_today, category_picked, index_this_moment, index_after_change)
 
@@ -128,7 +170,7 @@ def change_data(request):
 
 
     template = loader.get_template('change_data.html')
-
+    #total_amount_of_monthly_payments_all = total_amount_of_monthly_payments(attributes)  # the amount paid in monthly installments
 
   if "category_string" in locals() and "category_picked" in locals() and "attributes" in locals(): # if the user wants to change the money amount fot a specific category
     return render(request, 'change_data.html', {"category_string": category_string, "category_picked": category_picked, "attributes": attributes})
