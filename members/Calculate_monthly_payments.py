@@ -90,9 +90,10 @@ def total_amount_of_monthly_payments(attributes):
 
 def calculate_full_money_amount(attributes, category_name, new_amount):
     if category_name == False and new_amount == False:
+        is_there = False
         for x in attributes:
             x.new_amount = float(x.total_monthly_payments)
-            is_there = False
+            #is_there = False
     else:
         category_name_ = category_name
         new_amount_ = new_amount
@@ -109,6 +110,7 @@ def calculate_full_money_amount(attributes, category_name, new_amount):
         #return False
     if is_there == True:
         return True
+    else: return False
 
 
 
