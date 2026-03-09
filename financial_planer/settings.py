@@ -26,7 +26,11 @@ SECRET_KEY = 'django-insecure-u!&3*87@obk)rgjtz=8b)(7_xb_v14g&1)etaq!%$8td4^1%&t
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["financial-planer-2.fly.dev"]
+
+CSRF_TRUSTED_ORIGINS = ["https://financial-planer-2.fly.dev"]
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
 # Application definition
