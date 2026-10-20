@@ -1,0 +1,27 @@
+# Override: Caddy als Reverse-Proxy mit automatischem Let's-Encrypt-Zertifikat.
+# Voraussetzung: DNS der Domain zeigt auf den Server, Ports 80 und 443 sind offen.
+#   DOMAIN=finanzen.example.de docker compose -f docker-compose.yml -f docker-compose.https.yml up -d --build
+services:
+  web:
+    ports: []
+    expose:
+      - "8000"
+    environment:
+      DJANGO_HTTPS: "1"
+      DJANGO_ALLOWED_HOSTS: ${DOMAIN}
+      DJANGO_CSRF_TRUSTED_ORIGINS: https://${DOMAIN}
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    command: caddy reverse-proxy --from ${DOMAIN} --to web:8000
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

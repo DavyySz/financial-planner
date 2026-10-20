@@ -1,7 +1,23 @@
-<h2>Login</h2>
+{% extends "base.html" %}
 
-<form method="post">
+{% block title %}Login – Financial Planer{% endblock %}
+
+{% block content %}
+<div class="card auth">
+  <h2>Login</h2>
+  {% if form.non_field_errors %}
+    <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% endif %}
+  <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
+    <input type="hidden" name="next" value="{{ next }}">
+    <label for="id_username">Benutzername</label>
+    <input type="text" id="id_username" name="username" required autofocus autocomplete="username">
+    <label for="id_password">Passwort</label>
+    <input type="password" id="id_password" name="password" required autocomplete="current-password">
     <button type="submit">Einloggen</button>
-</form>
+  </form>
+  <p class="muted">Noch kein Konto? <a href="{% url 'signup' %}">Jetzt registrieren</a></p>
+  <p class="muted">Passwort vergessen? <a href="{% url 'password_request' %}">Neues Passwort beim Admin beantragen</a></p>
+</div>
+{% endblock %}

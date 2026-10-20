@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block title %}Adminboard – Financial Planer{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Adminboard</h2>
+  <div class="stats">
+    <div><div class="label">Benutzer gesamt</div><div class="value">{{ stats.users }}</div></div>
+    <div><div class="label">gerade online</div><div class="value {% if stats.online %}pos{% endif %}">{{ stats.online }}</div></div>
+    <div><div class="label">offene Passwort-Anfragen</div><div class="value {% if stats.open_requests %}alert{% endif %}">{{ stats.open_requests }}</div></div>
+    <div><div class="label">neu in den letzten 7 Tagen</div><div class="value">{{ stats.new_this_week }}</div></div>
+    <div><div class="label">aktiv in den letzten 7 Tagen</div><div class="value">{{ stats.active_this_week }}</div></div>
+    <div><div class="label">Admins</div><div class="value">{{ stats.admins }}</div></div>
+    <div><div class="label">Kategorien gesamt</div><div class="value">{{ stats.categories }}</div></div>
+    <div><div class="label">Buchungen gesamt</div><div class="value">{{ stats.transactions }}</div></div>
+  </div>
+  <p class="muted">„Online“ = in den letzten {{ online_minutes }} Minuten aktiv. Passwörter werden nur verschlüsselt (als Hash) gespeichert
+    und können nicht angezeigt werden; du kannst aber jederzeit ein neues Passwort setzen.
+    Technische Datenbank-Ansicht: <a href="{% url 'admin:index' %}">Django-Admin</a>.</p>
+</div>
+
+<div class="card" id="anfragen">
+  <h2>Passwort-Anfragen {% if open_requests %}<span class="badge">{{ open_requests|length }}</span>{% endif %}</h2>
+  {% if open_requests %}
+  <div class="table-wrap">
+  <table class="stack">
+    <thead><tr><th>Zeit</th><th>Benutzername</th><th>Nachricht</th><th>Neues Passwort setzen</th><th></th></tr></thead>
+    <tbody>
+      {% for r in open_requests %}
+      <tr>
+        <td data-label="Zeit">{{ r.created|date:"d.m.Y H:i" }}</td>
+        <td class="title">{{ r.username }}{% if not r.user %} <span class="muted">(kein Konto mit diesem Namen)</span>{% endif %}</td>
+        <td class="word{% if not r.message %} hide-empty{% endif %}" data-label="Nachricht">{{ r.message }}</td>
+        <td class="actions">
+          {% if r.user %}
+          <form class="pwform" action="{% url 'adminboard' %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="set_password">
+            <input type="hidden" name="user_id" value="{{ r.user.id }}">
+            <input type="text" name="password" required minlength="8" placeholder="neues Passwort" autocomplete="off">
+            <button type="submit" class="small">setzen</button>
+          </form>
+          {% endif %}
+        </td>
+        <td class="actions">
+          <form class="inline" action="{% url 'adminboard' %}" method="post">
+            {% csrf_token %}<input type="hidden" name="action" value="resolve_request"><input type="hidden" name="request_id" value="{{ r.id }}">
+            <button type="submit" class="small ghost">erledigt</button>
+          </form>
+          <form class="inline" action="{% url 'adminboard' %}" method="post">
+            {% csrf_token %}<input type="hidden" name="action" value="delete_request"><input type="hidden" name="request_id" value="{{ r.id }}">
+            <button type="submit" class="small danger">löschen</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+    <p class="muted">Keine offenen Anfragen. Nutzer können auf der Login-Seite unter „Passwort vergessen“ eine Anfrage stellen.</p>
+  {% endif %}
+  {% if done_requests %}
+  <details><summary>zuletzt erledigte Anfragen</summary>
+    <ul class="muted">
+      {% for r in done_requests %}<li>{{ r.username }} – angefragt {{ r.created|date:"d.m.Y H:i" }}, erledigt {{ r.resolved_at|date:"d.m.Y H:i" }}</li>{% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Benutzer</h2>
+  <div class="table-wrap">
+  <table class="stack">
+    <thead>
+      <tr>
+        <th>Benutzer</th><th>Status</th><th>zuletzt aktiv</th><th>registriert</th>
+        <th class="num">Einkommen</th><th class="num">Kategorien</th><th class="num">Guthaben</th><th class="num">Buchungen</th>
+        <th>Aktionen</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="title">
+          <span class="dot {% if r.online %}on{% endif %}" title="{% if r.online %}online{% else %}offline{% endif %}"></span>{{ r.user.username }}
+          {% if r.user.is_staff %}<span class="badge" style="background:var(--accent)">Admin</span>{% endif %}
+          {% if not r.user.is_active %}<span class="badge">gesperrt</span>{% endif %}
+          {% if r.open_request %}<span class="badge" title="offene Passwort-Anfrage">🔑</span>{% endif %}
+          {% if r.user.email %}<div class="muted">{{ r.user.email }}</div>{% endif %}
+        </td>
+        <td data-label="Status">{% if r.online %}<span class="pos">online</span>{% else %}offline{% endif %}</td>
+        <td data-label="zuletzt aktiv">{% if r.last_seen %}{{ r.last_seen|date:"d.m.Y H:i" }} <span class="muted">(vor {{ r.last_seen|timesince }})</span>{% else %}noch nie{% endif %}</td>
+        <td data-label="registriert">{{ r.user.date_joined|date:"d.m.Y H:i" }}</td>
+        <td class="num" data-label="Einkommen">{% if r.salary != None %}{{ r.salary|floatformat:2 }} €{% else %}–{% endif %}</td>
+        <td class="num" data-label="Kategorien">{{ r.categories }}</td>
+        <td class="num{% if r.balance < 0 %} neg{% endif %}" data-label="Guthaben">{{ r.balance|floatformat:2 }} €</td>
+        <td class="num" data-label="Buchungen">{{ r.transactions }}</td>
+        <td class="actions">
+          <details>
+            <summary>Passwort / Verwalten</summary>
+            <form class="pwform" action="{% url 'adminboard' %}" method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="set_password">
+              <input type="hidden" name="user_id" value="{{ r.user.id }}">
+              <input type="text" name="password" required minlength="8" placeholder="neues Passwort" autocomplete="off">
+              <button type="submit" class="small">Passwort setzen</button>
+            </form>
+            {% if r.user != request.user %}
+            <div style="margin-top:0.4rem">
+              <form class="inline" action="{% url 'adminboard' %}" method="post">
+                {% csrf_token %}<input type="hidden" name="action" value="toggle_active"><input type="hidden" name="user_id" value="{{ r.user.id }}">
+                <button type="submit" class="small ghost">{% if r.user.is_active %}sperren{% else %}entsperren{% endif %}</button>
+              </form>
+              <form class="inline" action="{% url 'adminboard' %}" method="post">
+                {% csrf_token %}<input type="hidden" name="action" value="toggle_staff"><input type="hidden" name="user_id" value="{{ r.user.id }}">
+                <button type="submit" class="small ghost">{% if r.user.is_staff %}Admin entfernen{% else %}zum Admin machen{% endif %}</button>
+              </form>
+              <form class="inline" action="{% url 'adminboard' %}" method="post"
+                    onsubmit="return confirm('Nutzer „{{ r.user.username|escapejs }}“ mit allen Kategorien und Buchungen löschen?');">
+                {% csrf_token %}<input type="hidden" name="action" value="delete_user"><input type="hidden" name="user_id" value="{{ r.user.id }}">
+                <button type="submit" class="small danger">löschen</button>
+              </form>
+            </div>
+            {% endif %}
+          </details>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Letzte Buchungen (alle Nutzer)</h2>
+  {% if recent_transactions %}
+  <div class="table-wrap">
+  <table class="stack">
+    <thead><tr><th>Zeit</th><th>Benutzer</th><th>Kategorie</th><th class="num">Betrag</th><th>Kommentar</th></tr></thead>
+    <tbody>
+      {% for t in recent_transactions %}
+      <tr>
+        <td data-label="Zeit">{{ t.created|date:"d.m.Y H:i" }}</td>
+        <td class="title">{{ t.attribute.member.user.username|default:t.attribute.member }}</td>
+        <td data-label="Kategorie">{{ t.attribute.category }}</td>
+        <td class="num {% if t.amount < 0 %}neg{% else %}pos{% endif %}" data-label="Betrag">{{ t.amount|floatformat:2 }} €</td>
+        <td class="word{% if not t.comment %} hide-empty{% endif %}" data-label="Kommentar">{{ t.comment }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="muted">Noch keine Buchungen.</p>{% endif %}
+</div>
+{% endblock %}

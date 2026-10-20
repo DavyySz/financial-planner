@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Financial Planer{% endblock %}</title>
+  <style>
+    :root { --bg: #f4f6f9; --card: #fff; --line: #d9dee5; --text: #1f2933; --muted: #616e7c;
+            --accent: #2563eb; --ok: #15803d; --bad: #b91c1c; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+           background: var(--bg); color: var(--text); }
+    header { background: #111827; color: #fff; padding: 0.7rem 1rem; display: flex;
+             align-items: center; gap: 0.75rem 1.5rem; flex-wrap: wrap; }
+    header .brand { font-weight: 700; font-size: 1.1rem; color: #fff; text-decoration: none; white-space: nowrap; }
+    header nav { margin-left: auto; display: flex; align-items: center; gap: 0.5rem 1rem; flex-wrap: wrap; }
+    header nav .who { white-space: nowrap; }
+    header a { color: #cbd5e1; text-decoration: none; }
+    header a:hover { color: #fff; }
+    header form { margin: 0; }
+    main { max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+            padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+    .card h2 { margin: 0 0 0.75rem; font-size: 1.1rem; }
+    .row { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+    .row > .card { flex: 1 1 320px; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -0.25rem; }
+    table { border-collapse: collapse; width: 100%; min-width: 0; }
+    th, td { border-bottom: 1px solid var(--line); padding: 0.45rem 0.6rem; text-align: left; }
+    th { background: #f1f5f9; font-weight: 600; font-size: 0.9rem; }
+    td.num, th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    tr.total td { font-weight: 700; background: #f8fafc; }
+    .pos { color: var(--ok); } .neg { color: var(--bad); }
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+    input[type=text], input[type=number], input[type=password], select {
+      width: 100%; padding: 0.4rem 0.5rem; border: 1px solid var(--line); border-radius: 5px; font: inherit; }
+    button, .btn { margin-top: 0.6rem; padding: 0.45rem 0.9rem; border: 0; border-radius: 5px;
+                   background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
+    button.small { margin: 0; padding: 0.2rem 0.55rem; font-size: 0.8rem; }
+    button.danger { background: var(--bad); }
+    button.ghost { background: #e5e7eb; color: var(--text); }
+    .messages { list-style: none; padding: 0; margin: 0 0 1rem; }
+    .messages li { padding: 0.6rem 0.9rem; border-radius: 6px; margin-bottom: 0.4rem; }
+    .messages .success { background: #dcfce7; color: #14532d; }
+    .messages .error { background: #fee2e2; color: #7f1d1d; }
+    .messages .info { background: #dbeafe; color: #1e3a8a; }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+    .kpi { display: flex; gap: 1rem 1.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .kpi > div { min-width: 140px; flex: 1 1 140px; }
+    .kpi .label { font-size: 0.8rem; color: var(--muted); }
+    .kpi .value { font-size: 1.4rem; font-weight: 700; }
+    .auth { max-width: 380px; margin: 3rem auto; }
+    .errorlist { color: var(--bad); margin: 0.2rem 0 0; padding-left: 1.2rem; font-size: 0.85rem; }
+    .helptext { color: var(--muted); font-size: 0.8rem; }
+    form.inline { display: inline; }
+    .badge { display: inline-block; min-width: 1.3em; padding: 0 0.4em; border-radius: 999px; background: var(--bad);
+             color: #fff; font-size: 0.75rem; font-weight: 700; text-align: center; }
+    .notice { background: #fef3c7; color: #78350f; border: 1px solid #fcd34d; border-radius: 6px;
+              padding: 0.6rem 0.9rem; margin-bottom: 1rem; }
+    .dot { display: inline-block; width: 0.65em; height: 0.65em; border-radius: 50%; background: #9ca3af; margin-right: 0.3em; }
+    .dot.on { background: var(--ok); box-shadow: 0 0 0 3px #bbf7d0; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; }
+    .stats > div { background: #f8fafc; border: 1px solid var(--line); border-radius: 6px; padding: 0.6rem 0.8rem; }
+    .stats .label { font-size: 0.8rem; color: var(--muted); }
+    .stats .value { font-size: 1.5rem; font-weight: 700; }
+    .stats .value.alert { color: var(--bad); }
+    details summary { cursor: pointer; color: var(--accent); }
+    .pwform { display: flex; gap: 0.4rem; align-items: center; margin-top: 0.3rem; }
+    .pwform input { width: 11rem; }
+    .pwform button { margin: 0; }
+    @media (max-width: 600px) { .pwform { flex-direction: column; align-items: stretch; } .pwform input { width: 100%; } }
+    .actions { white-space: nowrap; }
+    .actions form { display: inline; }
+    .word { overflow-wrap: anywhere; }
+    @media (max-width: 600px) {
+      main { margin: 1rem auto; padding: 0 0.6rem; }
+      .card { padding: 0.8rem 0.8rem; }
+      .card h2 { font-size: 1rem; }
+      th, td { padding: 0.4rem 0.45rem; font-size: 0.9rem; }
+      .kpi .value { font-size: 1.15rem; }
+      .auth { margin: 1rem auto; }
+      header .who { display: none; }
+      button, .btn { width: 100%; }
+      button.small, .btn.small { width: auto; }
+      .salary-row { flex-direction: column; }
+      .salary-row button { margin-top: 0.4rem; }
+      /* breite Tabellen als gestapelte Karten: jede Zelle zeigt ihre Spaltenbezeichnung */
+      table.stack thead { display: none; }
+      table.stack, table.stack tbody, table.stack tr, table.stack td { display: block; width: 100%; }
+      table.stack tr { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 0.6rem; padding: 0.2rem 0.5rem; background: #fff; }
+      table.stack tr.total { background: #f8fafc; }
+      table.stack td { display: flex; justify-content: space-between; gap: 0.75rem; border: 0;
+                       border-bottom: 1px dashed var(--line); padding: 0.3rem 0; text-align: right; white-space: normal; }
+      table.stack td:last-child { border-bottom: 0; }
+      table.stack td::before { content: attr(data-label); font-weight: 600; color: var(--muted); text-align: left; flex: 0 0 auto; }
+      table.stack td:empty, table.stack td.hide-empty { display: none; }
+      table.stack td.actions { justify-content: flex-end; }
+      table.stack td.actions::before { content: none; }
+      table.stack td.title { font-size: 1.05rem; font-weight: 700; justify-content: flex-start; text-align: left; }
+      table.stack td.title::before { content: none; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <a class="brand" href="{% url 'home' %}">💶 Financial Planer</a>
+  <nav>
+    {% if user.is_authenticated %}
+      <span class="muted who">Angemeldet als <b style="color:#fff">{{ user.username }}</b></span>
+      <a href="{% url 'dashboard' %}">Dashboard</a>
+      {% if user.is_staff %}<a href="{% url 'adminboard' %}">Adminboard{% if open_reset_requests %} <span class="badge">{{ open_reset_requests }}</span>{% endif %}</a>{% endif %}
+      <form action="{% url 'logout' %}" method="post">{% csrf_token %}
+        <button type="submit" class="small ghost">Logout</button>
+      </form>
+    {% else %}
+      <a href="{% url 'login' %}">Login</a>
+      <a href="{% url 'signup' %}">Registrieren</a>
+    {% endif %}
+  </nav>
+</header>
+<main>
+  {% if user.is_staff and open_reset_requests and request.resolver_match.url_name != "adminboard" %}
+    <div class="notice">🔔 {{ open_reset_requests }} offene Passwort-Anfrage{{ open_reset_requests|pluralize:"n" }}:
+      <a href="{% url 'adminboard' %}">im Adminboard bearbeiten</a></div>
+  {% endif %}
+  {% if messages %}
+    <ul class="messages">
+      {% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

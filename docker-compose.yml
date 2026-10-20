@@ -1,0 +1,26 @@
+# Alternative zum start.sh: Betrieb mit Docker.
+#   docker compose up -d --build        -> http://<server-ip>:8000
+# Mit eigener Domain und automatischem HTTPS (Caddy):
+#   DOMAIN=finanzen.example.de docker compose -f docker-compose.yml -f docker-compose.https.yml up -d --build
+# Einstellungen optional in .env (DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS, ...).
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DJANGO_DEBUG: "0"
+      DJANGO_SECRET_KEY_FILE: /data/secret_key
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/db.sqlite3}
+    volumes:
+      - fp-data:/data
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn --bind :8000 --workers 3 --access-logfile - financial_planer.wsgi"
+
+volumes:
+  fp-data:

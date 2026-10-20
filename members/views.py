@@ -1,180 +1,331 @@
-
-from pdb import find_function
-from unicodedata import category
-
-from django.http import HttpResponse
-from django.template import loader
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from .models import Member
-from members.models import MemberAttribute
-from django.contrib import messages
-from django.shortcuts import render, redirect
 import datetime
-from .date import past_months_since_deposit
-from .date import calculate_total_amount_of_monthly_payments
-from .Calculate_monthly_payments import Calculate_monthly_payments
-from .Calculate_monthly_payments import total_amount_of_monthly_payments
-from .Calculate_monthly_payments import calculate_full_money_amount
+from decimal import Decimal, InvalidOperation
+
+from django.contrib import messages
+from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .Check_whether_category_is_duplicated import Check_whether_category_is_duplicated
-from django.contrib.postgres.fields import ArrayField
-from decimal import Decimal
+from .forms import SignupForm
+from .models import Member, MemberAttribute, PasswordResetRequest, Transaction
+
+MAX_CATEGORY_LENGTH = 25
 
 
-def members(request):
-  mymembers = Member.objects.all().values()
-  template = loader.get_template('all_members.html')
-  context = {'mymembers': mymembers,}
-  return HttpResponse(template.render(context, request))
-  
-def details(request, id):
-  mymember = Member.objects.get(id=id)
-  template = loader.get_template('details.html')
-  context = {'mymember': mymember,}
-  return HttpResponse(template.render(context, request))
+def get_member(user):
+    """Member zum eingeloggten User holen, beim ersten Mal anlegen."""
+    member, _ = Member.objects.get_or_create(
+        user=user, defaults={"firstname": user.username, "lastname": ""}
+    )
+    return member
 
-def main(request):
-  template = loader.get_template('main.html')
-  return HttpResponse(template.render())
 
-def testing(request):
-  template = loader.get_template('template.html')
-  context = {
-    'fruits': ['Apple', 'Banana', 'Cherry'],   
-  }
-  return HttpResponse(template.render(context, request))
+def parse_amount(text):
+    """'1.234,50' / '1234.50' / '-30' -> Decimal, sonst None."""
+    text = (text or "").strip().replace(" ", "")
+    if "," in text:
+        text = text.replace(".", "").replace(",", ".")
+    try:
+        value = Decimal(text)
+    except InvalidOperation:
+        return None
+    if not value.is_finite():
+        return None
+    return value.quantize(Decimal("0.01"))
 
-def double_bracket(request):
-  mymembers = Member.objects.all().values()
-  template = loader.get_template('template.html')
-  context = {'mymembers': mymembers,}
-  return HttpResponse(template.render(context, request))
+
+def home(request):
+    return redirect("dashboard")
+
+
+def signup(request):
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+    form = SignupForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        get_member(user)
+        login(request, user)
+        messages.success(request, "Willkommen! Dein Konto wurde angelegt.")
+        return redirect("dashboard")
+    return render(request, "registration/signup.html", {"form": form})
+
 
 @login_required
 def dashboard(request):
-    #attributes = request.user.member.attributes.all()
+    member = get_member(request.user)
 
     if request.method == "POST":
+        # neue Kategorie anlegen
+        name = (request.POST.get("category_name") or "").strip()
+        comment = (request.POST.get("comment") or "").strip()
+        rate = parse_amount(request.POST.get("monthly_amount"))
 
+        if not name or len(name) > MAX_CATEGORY_LENGTH:
+            messages.error(request, f"Der Kategoriename muss 1 bis {MAX_CATEGORY_LENGTH} Zeichen lang sein.")
+        elif rate is None:
+            messages.error(request, "Die monatliche Rate muss eine Zahl sein (positiv = Einzahlung, negativ = Abbuchung).")
+        elif Check_whether_category_is_duplicated(member, name):
+            messages.error(request, f"Die Kategorie „{name}“ gibt es schon.")
+        else:
+            today = datetime.date.today()
+            attribute = MemberAttribute(
+                member=member,
+                key="cathegory" + str(member.attributes.count() + 1),
+                category=name,
+                comment=comment,
+                creation_date_of_the_category=today,
+            )
+            attribute.set_rate(rate, today)
+            attribute.save()
+            messages.success(request, f"Kategorie „{name}“ angelegt.")
+        return redirect("dashboard")
 
+    attributes = list(member.attributes.all())
+    rates = [a.current_rate for a in attributes]
+    sum_of_rates = sum(rates, Decimal("0"))                          # Summe aller Raten (mit Vorzeichen)
+    sum_of_deposits = sum((r for r in rates if r > 0), Decimal("0"))  # Einzahlungen in Toepfe
+    sum_of_debits = sum((r for r in rates if r < 0), Decimal("0"))    # monatliche Abbuchungen (negativ)
+    total_balance = sum((a.balance for a in attributes), Decimal("0"))
+    salary = member.monthly_salary
+    # Einzahlungen und Abbuchungen verringern beide das frei verfuegbare Geld
+    remaining = salary - sum_of_deposits + sum_of_debits if salary is not None else None
+    transactions = Transaction.objects.filter(attribute__member=member).select_related("attribute")
 
-      if len(request.POST.get("category_name")) <= 25 and request.POST.get("monthly_amount") != "":
-        value_from_input = request.POST.get("category_name")
-        value_monthly_amount = Decimal(request.POST.get("monthly_amount"))
-        value_comment = request.POST.get("comment")
-        id_of_user = int(request.POST.get("id_of_user"))
-
-      else:
-        return HttpResponse('<script>alert("FEHLER! Der Kategoriename darf maximal 25 Zeichen lang sein und keine Zahlen enthalten. Der Betrag darf keine Buchstaben enthalten. Name und monatliche Einzahlung dürfen nicht leer sein. Der Kommentar ist optional."); window.history.back();</script>')
-
-
-      if "value_from_input" in locals():
-        duplicate_variable = Check_whether_category_is_duplicated(value_from_input)
-        if duplicate_variable == False:
-          return HttpResponse('<script>alert("Kategorien dürfen nicht doppelt sein"); window.history.back();</script>')
-        if value_from_input != "" and value_monthly_amount != "":
-          index_of_new_cathegory = request.user.member.attributes.count() + 1
-          new_key = "cathegory" + str(index_of_new_cathegory)
-
-          date_today = datetime.date.today()
-          monthly_amount_array=[[]]
-          monthly_amount_array[0].insert(0,int(value_monthly_amount))
-          monthly_amount_array[0].insert(1, date_today.year)
-          monthly_amount_array[0].insert(2, date_today.month)
-
-          request.user.member.attributes.create(key=new_key, category=value_from_input, monthly_amount=monthly_amount_array, comment=value_comment, creation_date_of_the_category = date_today, index_monthly_amount = 0)
-          attributes = request.user.member.attributes.all()
-
-          past_months_since_deposit(attributes.order_by("id"))
-          total_amount_of_monthly_payments(attributes.order_by("id"))
-          #Calculate_monthly_payments(attributes)
-          return redirect("dashboard")
-
-
-    elif request.method == "GET":
-
-      attributes = request.user.member.attributes.order_by("id")
-      Calculate_monthly_payments(attributes.order_by("id"))
-      past_months_since_deposit(attributes.order_by("id"))
-      total_amount_of_monthly_payments(attributes.order_by("id"))
-
-      category_name_new = request.GET.get("category_name_new")
-      monthly_amount_new = request.GET.get("monthly_amount_new")
-      if category_name_new != None and monthly_amount_new != None:
-        category_name = category_name_new
-        new_amount = monthly_amount_new
-        is_there = calculate_full_money_amount(attributes, category_name, new_amount)
-        if is_there == False:
-            return HttpResponse('<script>alert("Kategorie gibt es nicht"); window.history.back();</script>')
-      else:
-         category_name = False
-         new_amount = False
-         calculate_full_money_amount(attributes, category_name, new_amount)
-
-      return render(request, 'dashboard.html', {"attributes": attributes}) # html on left side / python on right side
-
+    return render(request, "dashboard.html", {
+        "attributes": attributes,
+        "transactions": transactions,
+        "salary": salary,
+        "sum_of_rates": sum_of_rates,
+        "sum_of_deposits": sum_of_deposits,
+        "sum_of_debits": sum_of_debits,
+        "remaining": remaining,
+        "total_balance": total_balance,
+    })
 
 
 @login_required
 def change_data(request):
+    """Monatliche Rate und Kommentar einer Kategorie aendern."""
+    member = get_member(request.user)
+    category = request.POST.get("category") if request.method == "POST" else request.GET.get("category")
+    attribute = member.attributes.filter(category=category).first()
+    if attribute is None:
+        messages.error(request, "Diese Kategorie gibt es nicht.")
+        return redirect("dashboard")
 
-  if request.GET.get("monthly_amount_new"): # if the user is clicking on the linkt of the category
-    attributes = request.user.member.attributes.all()
-    monthly_amount_new = request.GET.get("monthly_amount_new") # new amount of money the user wants to use in the future
-    comment_change =request.GET.get("comment_change") # comment for the change (optional for the user)
-    category_string = request.GET.get("category_string")# name of the category
-    date_today = datetime.date.today()
-    total_amount_of_monthly_payments_all = total_amount_of_monthly_payments(attributes)  # the amount paid in monthly installments
+    if request.method == "POST":
+        rate = parse_amount(request.POST.get("monthly_amount_new"))
+        if rate is None:
+            messages.error(request, "Die monatliche Rate muss eine Zahl sein (positiv = Einzahlung, negativ = Abbuchung).")
+            return redirect(f"{request.path}?category={attribute.category}")
+        attribute.set_rate(rate)
+        comment = (request.POST.get("comment_change") or "").strip()
+        if comment:
+            attribute.comment = comment
+        attribute.save()
+        messages.success(request, f"Rate für „{attribute.category}“ auf {rate} € geändert.")
+        return redirect("dashboard")
 
-    category_picked = request.user.member.attributes.values_list("key", flat=True).get(category=category_string)  # key
-    #index_this_moment = request.user.member.attributes.values_list("index_monthly_amount", flat=True).get(category=category_string)
-
-    r = request.user.member.attributes.get(key=category_picked)
-    #r.monthly_amount[0].append(monthly_amount_new)
-    # r.monthly_amount[index_after_change] = monthly_amount_new
-    request.user.member.save()
-    r.save()
-    #index_after_change = len(request.user.member.attributes.values_list("monthly_amount", flat=True).get(key=category_picked)) - 1
-    #r.index_monthly_amount = index_after_change
-    year_ = Decimal(date_today.year)
-    month_ = Decimal(date_today.month)
-    monthly_amount_to_append = [Decimal(monthly_amount_new),year_,month_]
-    if int(monthly_amount_to_append[2]) == int(r.monthly_amount[-1][2]) and int(monthly_amount_to_append[0] != int(r.monthly_amount[-1][0])): # if value of monthly amount (was changed) in the same month as the last update of the value but the value is different
-      r.monthly_amount[-1][0] = monthly_amount_to_append[0]
-      r.save()
+    return render(request, "change_data.html", {"attribute": attribute})
 
 
-    if int(monthly_amount_to_append[2]) == int(r.monthly_amount[-1][2]) and int(monthly_amount_to_append[0] == int(r.monthly_amount[-1][0])): # if value of monthly amount (was changed) in the same month as the last update of the value but the value is same
-      pass
+@login_required
+@require_POST
+def add_transaction(request):
+    """Einmalige Einzahlung (+) oder Auszahlung (-) in einer Kategorie."""
+    member = get_member(request.user)
+    amount = parse_amount(request.POST.get("amount"))
+    comment = (request.POST.get("comment") or "").strip()
+    attribute = member.attributes.filter(category=request.POST.get("category")).first()
 
-    if int(monthly_amount_to_append[2]) != int(r.monthly_amount[-1][2]): # if value of monthly amount (was changed) in different month as the last update
-      r.monthly_amount[index_after.append[monthly_amount_new, year_, month_]]
-      r.monthly_amount.append(monthly_amount_to_append)
-      request.user.member.save()
-      r.save()
-
-    Calculate_monthly_payments(attributes)
-    #total_amount_of_monthly_payments_all = total_amount_of_monthly_payments(attributes) # the amount paid in monthly installments
-
-    #Calculate_new_monthly_payments(attributes, monthly_amount_new, comment_change, category_string, date_today, category_picked, index_this_moment, index_after_change)
-
-
-    template = loader.get_template('change_data.html')
-
-  if request.GET.get("category"): # if the user wants to change the money amount fot a specific category
-    category_string = request.GET.get("category")
-    attributes = request.user.member.attributes.all()
-
-    category_picked = request.user.member.attributes.values_list("key",flat=True).get(category=category_string)
+    if attribute is None:
+        messages.error(request, "Bitte eine vorhandene Kategorie wählen.")
+    elif amount is None or amount == 0:
+        messages.error(request, "Der Betrag muss eine Zahl ungleich 0 sein (negativ = Auszahlung).")
+    else:
+        Transaction.objects.create(attribute=attribute, amount=amount, comment=comment)
+        messages.success(request, f"{'Einzahlung' if amount > 0 else 'Auszahlung'} von {abs(amount)} € in „{attribute.category}“ gebucht.")
+    return redirect("dashboard")
 
 
-    template = loader.get_template('change_data.html')
-    #total_amount_of_monthly_payments_all = total_amount_of_monthly_payments(attributes)  # the amount paid in monthly installments
+@login_required
+@require_POST
+def delete_transaction(request):
+    member = get_member(request.user)
+    transaction = get_object_or_404(
+        Transaction, id=request.POST.get("transaction_id"), attribute__member=member
+    )
+    transaction.delete()
+    messages.success(request, "Buchung gelöscht.")
+    return redirect("dashboard")
 
-  if "category_string" in locals() and "category_picked" in locals() and "attributes" in locals(): # if the user wants to change the money amount fot a specific category
-    return render(request, 'change_data.html', {"category_string": category_string, "category_picked": category_picked, "attributes": attributes})
-  elif "monthly_amount_new" in locals(): # if the user is clicking on the linkt of the category
-    return render(request, 'change_data.html',{"monthly_amount_new": monthly_amount_new, "comment_change": comment_change, "category_picked": category_picked})
+
+@login_required
+@require_POST
+def set_salary(request):
+    member = get_member(request.user)
+    salary = parse_amount(request.POST.get("monthly_salary"))
+    if salary is None or salary < 0:
+        messages.error(request, "Das Gehalt muss eine Zahl ≥ 0 sein.")
+    else:
+        member.monthly_salary = salary
+        member.save()
+        messages.success(request, "Monatliches Einkommen gespeichert.")
+    return redirect("dashboard")
 
 
+@login_required
+@require_POST
+def delete_category(request):
+    member = get_member(request.user)
+    attribute = get_object_or_404(MemberAttribute, id=request.POST.get("attribute_id"), member=member)
+    name = attribute.category
+    attribute.delete()
+    messages.success(request, f"Kategorie „{name}“ gelöscht.")
+    return redirect("dashboard")
+
+
+# =====================================================================
+# Passwort vergessen -> Anfrage an den Admin
+# =====================================================================
+
+def password_request(request):
+    """Nutzer ohne Passwort bittet den Admin um ein neues (kein E-Mail-Versand noetig)."""
+    if request.method == "POST":
+        username = (request.POST.get("username") or "").strip()
+        message = (request.POST.get("message") or "").strip()[:255]
+        if not username:
+            messages.error(request, "Bitte den Benutzernamen angeben.")
+            return redirect("password_request")
+        user = User.objects.filter(username__iexact=username).first()
+        if not PasswordResetRequest.objects.filter(username__iexact=username, resolved=False).exists():
+            PasswordResetRequest.objects.create(username=username, user=user, message=message)
+        messages.success(request, "Deine Anfrage wurde an den Admin gesendet. Er setzt dir ein neues Passwort und teilt es dir mit.")
+        return redirect("login")
+    return render(request, "registration/password_request.html")
+
+
+# =====================================================================
+# Adminboard
+# =====================================================================
+
+def staff_only(view):
+    """Nur fuer Admins (is_staff); alle anderen bekommen 403."""
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_staff:
+            raise PermissionDenied
+        return view(request, *args, **kwargs)
+    wrapper.__name__ = view.__name__
+    return wrapper
+
+
+@staff_only
+def adminboard(request):
+    if request.method == "POST":
+        return _adminboard_action(request)
+
+    users = User.objects.select_related("member").order_by("-date_joined")
+    rows = []
+    for u in users:
+        member = getattr(u, "member", None)
+        attributes = list(member.attributes.all()) if member else []
+        rows.append({
+            "user": u,
+            "member": member,
+            "online": member.is_online if member else False,
+            "last_seen": member.last_seen if member else None,
+            "salary": member.monthly_salary if member else None,
+            "categories": len(attributes),
+            "balance": sum((a.balance for a in attributes), Decimal("0")),
+            "transactions": sum(a.transactions.count() for a in attributes),
+            "open_request": PasswordResetRequest.objects.filter(user=u, resolved=False).exists(),
+        })
+
+    open_requests = PasswordResetRequest.objects.filter(resolved=False)
+    done_requests = PasswordResetRequest.objects.filter(resolved=True)[:10]
+    online_count = sum(1 for r in rows if r["online"])
+    week_ago = timezone.now() - datetime.timedelta(days=7)
+
+    return render(request, "adminboard.html", {
+        "rows": rows,
+        "open_requests": open_requests,
+        "done_requests": done_requests,
+        "stats": {
+            "users": len(rows),
+            "online": online_count,
+            "admins": sum(1 for r in rows if r["user"].is_staff),
+            "new_this_week": sum(1 for r in rows if r["user"].date_joined >= week_ago),
+            "active_this_week": sum(1 for r in rows if r["last_seen"] and r["last_seen"] >= week_ago),
+            "categories": MemberAttribute.objects.count(),
+            "transactions": Transaction.objects.count(),
+            "open_requests": open_requests.count(),
+        },
+        "online_minutes": Member.ONLINE_MINUTES,
+        "recent_transactions": Transaction.objects.select_related("attribute__member__user").order_by("-created")[:10],
+    })
+
+
+def _adminboard_action(request):
+    action = request.POST.get("action")
+    user_id = request.POST.get("user_id")
+    target = User.objects.filter(id=user_id).first() if user_id else None
+
+    if action == "set_password" and target:
+        password = request.POST.get("password") or ""
+        try:
+            validate_password(password, target)
+        except ValidationError as e:
+            messages.error(request, " ".join(e.messages))
+            return redirect("adminboard")
+        target.set_password(password)
+        target.save()
+        PasswordResetRequest.objects.filter(user=target, resolved=False).update(resolved=True, resolved_at=timezone.now())
+        messages.success(request, f"Neues Passwort für „{target.username}“ gesetzt. Bitte dem Nutzer mitteilen.")
+
+    elif action == "toggle_active" and target:
+        if target == request.user:
+            messages.error(request, "Du kannst dich nicht selbst sperren.")
+        else:
+            target.is_active = not target.is_active
+            target.save()
+            messages.success(request, f"„{target.username}“ wurde {'entsperrt' if target.is_active else 'gesperrt'}.")
+
+    elif action == "toggle_staff" and target:
+        if target == request.user:
+            messages.error(request, "Du kannst dir nicht selbst die Admin-Rechte nehmen.")
+        else:
+            target.is_staff = not target.is_staff
+            target.is_superuser = target.is_staff
+            target.save()
+            messages.success(request, f"„{target.username}“ ist jetzt {'Admin' if target.is_staff else 'normaler Nutzer'}.")
+
+    elif action == "delete_user" and target:
+        if target == request.user:
+            messages.error(request, "Du kannst dich nicht selbst löschen.")
+        else:
+            name = target.username
+            target.delete()
+            messages.success(request, f"Nutzer „{name}“ mit allen Daten gelöscht.")
+
+    elif action == "resolve_request":
+        req = get_object_or_404(PasswordResetRequest, id=request.POST.get("request_id"))
+        req.resolved = True
+        req.resolved_at = timezone.now()
+        req.save()
+        messages.success(request, f"Anfrage von „{req.username}“ als erledigt markiert.")
+
+    elif action == "delete_request":
+        PasswordResetRequest.objects.filter(id=request.POST.get("request_id")).delete()
+        messages.success(request, "Anfrage gelöscht.")
+
+    else:
+        messages.error(request, "Unbekannte Aktion.")
+    return redirect("adminboard")

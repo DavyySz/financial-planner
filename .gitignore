@@ -15,3 +15,11 @@ db.sqlite3
 # IDE
 .idea/
 .vscode/
+*.sqlite3
+.venv/
+staticfiles/
+.env
+.secret_key
+.tools/
+public_url.txt
+*.sqlite3.*

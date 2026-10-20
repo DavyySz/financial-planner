@@ -1,12 +1,45 @@
-<a href=/dashboard/>zurück</a>
-<h1>{{category_string}}</h1>
-<P>In diesem Eingabefeld lässt sich der monatliche Betrag der eingezahlt wird, einschließlich dieses Monats, für die zukunft ändern</P>
+{% extends "base.html" %}
+{% load l10n %}
 
-<form action=/dashboard/change_data method="get">
-  <label for="category_name">monatlicher Einzahlungsbetrag ändern:</label><br>
-  <input type="text" name="monthly_amount_new" placeholder="Einzahlung in € (+/-)" pattern="[0-9.-]+" maxlength="13" required><br>
-  <input type="text" name="comment_change" placeholder="Kommentar" pattern="[A-Za-z0-9!? ]+"><br>
-  <button type="submit" name="category_string" value={{category_string}}>submit</button> <!--submit button-->
-</form>
+{% block title %}{{ attribute.category }} – Financial Planer{% endblock %}
 
+{% block content %}
+<p><a href="{% url 'dashboard' %}">← zurück zum Dashboard</a></p>
 
+<div class="row">
+  <div class="card">
+    <h2>Kategorie „{{ attribute.category }}“ ändern</h2>
+    <p class="muted">Die neue Rate gilt ab diesem Monat (einschließlich) für die Zukunft.
+      Frühere Monate werden weiterhin mit der damals gültigen Rate gerechnet.</p>
+    <form action="{% url 'change_data' %}" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="category" value="{{ attribute.category }}">
+      <label for="monthly_amount_new">Monatliche Rate in € (positiv = Einzahlung, negativ = Abbuchung)</label>
+      <input type="number" step="0.01" required id="monthly_amount_new" name="monthly_amount_new"
+             value="{{ attribute.current_rate|unlocalize }}">
+      <label for="comment_change">Kommentar (leer lassen = unverändert)</label>
+      <input type="text" id="comment_change" name="comment_change" maxlength="255" value="{{ attribute.comment|default:'' }}">
+      <button type="submit">Speichern</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Verlauf der Rate</h2>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>gültig ab</th><th class="num">Rate pro Monat</th></tr></thead>
+      <tbody>
+        {% for amount, year, month in attribute.rate_history %}
+          <tr><td>{{ month|stringformat:"02d" }}/{{ year }}</td><td class="num">{{ amount|floatformat:2 }} €</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <div class="kpi">
+      <div><div class="label">Monate aktiv</div><div class="value">{{ attribute.months_active }}</div></div>
+      <div><div class="label">eingezahlte Raten</div><div class="value">{{ attribute.paid_rates|floatformat:2 }} €</div></div>
+      <div><div class="label">Kontostand</div><div class="value">{{ attribute.balance|floatformat:2 }} €</div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

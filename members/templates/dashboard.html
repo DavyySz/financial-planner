@@ -1,191 +1,151 @@
+{% extends "base.html" %}
+{% load l10n %}
 
+{% block title %}Dashboard – Financial Planer{% endblock %}
 
-<style>
-.myDiv {
-  border: 1px outset red;
-  background-color: lightblue;
-  text-align: left;
-  margin: 10x;
-  width: 20;
-  height: 20;
-}
+{% block content %}
 
-.Box_contents {
-  font-size: 11px;
-  text-align: center;
-  margin-top: 4px;
-}
-
-.input_form {
-  border: 1px outset red;
-  background-color: lightblue;
-  display: inline-block;
-  width: 200px;
-  margin-bottom: 3px;
-  margin-right: -4px;
-}
-
-.input_box {
-  position: relative;left: 2px;
-}
-</style>
-
-
-<h1>Dashboard</h1>
-
-<p>Hallo {{ request.user.member }} 👋</p>
-
-<p>Du bist erfolgreich eingeloggt.</p>
-
-<form action="{% url 'logout' %}" method="post">
-  {% csrf_token %}
-  <button type="submit">Logout</button>
-</form >
-
-<div class="input_form">
-<form action="{% url 'dashboard' %}" method="post">
-  {%csrf_token%}
-
-  <div class="input_box">
-  <label for="category_name">neue Kategorie:</label><br>
-
-  <input type="text" required name="category_name" placeholder="Name der Kategorie" maxlength="25" pattern="[A-Za-z ]+"><br> <!--input box send category to server-->
-  <input type="text" required name="monthly_amount" placeholder="monatliche Einzahlung in €" maxlength="13" pattern="[0-9.-]+"><br> <!--input box send monthly_amount to server-->
-  <input type="text"  name="comment" placeholder="Kommentar" maxlength="50" pattern="[A-Za-z0-9!? ]+"><br> <!--input box send comment to server-->
-    <button type="submit" name="id_of_user" value={{ request.user.member.id }}>Submit</button>
-  </div>
-
-</form>
+<div class="card">
+  <h2>Monatsübersicht</h2>
+  <form action="{% url 'set_salary' %}" method="post" style="max-width:420px">
+    {% csrf_token %}
+    <label for="monthly_salary">Monatliches Einkommen (Gehalt usw.) in €</label>
+    <div class="salary-row" style="display:flex; gap:0.5rem; align-items:flex-start">
+      <input type="number" step="0.01" min="0" required id="monthly_salary" name="monthly_salary"
+             placeholder="z.B. 2500" value="{% if salary != None %}{{ salary|unlocalize }}{% endif %}">
+      <button type="submit" style="margin-top:0">Speichern</button>
+    </div>
+  </form>
+  {% if salary != None %}
+    <div class="kpi">
+      <div><div class="label">Einkommen</div><div class="value">{{ salary|floatformat:2 }} €</div></div>
+      <div><div class="label">− Einzahlungen in Töpfe</div><div class="value">{{ sum_of_deposits|floatformat:2 }} €</div></div>
+      <div><div class="label">− monatliche Abbuchungen</div><div class="value">{{ sum_of_debits|floatformat:2|cut:"-" }} €</div></div>
+      <div><div class="label">= frei verfügbar</div>
+        <div class="value {% if remaining < 0 %}neg{% else %}pos{% endif %}">{{ remaining|floatformat:2 }} €</div></div>
+      <div><div class="label">Guthaben in allen Töpfen</div><div class="value">{{ total_balance|floatformat:2 }} €</div></div>
+    </div>
+  {% else %}
+    <p class="muted">Gib dein monatliches Einkommen an, um zu sehen, was nach allen Raten übrig bleibt.</p>
+  {% endif %}
 </div>
 
-
-<div class="input_form">
-</form>
-<form action="{% url 'dashboard' %}" method="get">
-  {%csrf_token%}
-
-  <div class="input_box">
-  <label for="category_name">neue Einzahlung:</label><br>
-
-  <input type="text" name="category_name_new" placeholder="Name der Kategorie" pattern="[A-Za-z ]+"><br>
-  <input type="text" name="monthly_amount_new" placeholder="Einzahlung in € (+/-)" pattern="[0-9.-]+"><br>
-  <input type="text" name="comment_change" placeholder="Kommentar" pattern="[A-Za-z0-9!?]+"><br>
-
-  <input type="submit" value="Submit"> <!--submit button-->
+<div class="card">
+  <h2>Kategorien / Budgettöpfe</h2>
+  {% if attributes %}
+  <div class="table-wrap">
+  <table class="stack">
+    <thead>
+      <tr>
+        <th>Kategorie</th>
+        <th class="num">Rate pro Monat</th>
+        <th class="num">Monate aktiv</th>
+        <th class="num">eingezahlte Raten</th>
+        <th class="num">Ein-/Auszahlungen</th>
+        <th class="num">Kontostand</th>
+        <th>Kommentar</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for x in attributes %}
+      <tr>
+        <td class="title"><a href="{% url 'change_data' %}?category={{ x.category|urlencode }}">{{ x.category }}</a></td>
+        <td class="num{% if x.current_rate < 0 %} neg{% endif %}" data-label="Rate pro Monat">{{ x.current_rate|floatformat:2 }} €</td>
+        <td class="num" data-label="Monate aktiv">{{ x.months_active }}</td>
+        <td class="num" data-label="eingezahlte Raten">{{ x.paid_rates|floatformat:2 }} €</td>
+        <td class="num {% if x.transactions_sum < 0 %}neg{% elif x.transactions_sum > 0 %}pos{% endif %}" data-label="Ein-/Auszahlungen">{{ x.transactions_sum|floatformat:2 }} €</td>
+        <td class="num{% if x.balance < 0 %} neg{% endif %}" data-label="Kontostand"><b>{{ x.balance|floatformat:2 }} €</b></td>
+        <td class="word{% if not x.comment %} hide-empty{% endif %}" data-label="Kommentar">{{ x.comment|default:"" }}</td>
+        <td class="actions">
+          <a class="btn small" style="padding:0.2rem 0.55rem;font-size:0.8rem;text-decoration:none"
+             href="{% url 'change_data' %}?category={{ x.category|urlencode }}">ändern</a>
+          <form class="inline" action="{% url 'delete_category' %}" method="post"
+                onsubmit="return confirm('Kategorie „{{ x.category|escapejs }}“ mit allen Buchungen löschen?');">
+            {% csrf_token %}
+            <button type="submit" class="small danger" name="attribute_id" value="{{ x.id }}">löschen</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      <tr class="total">
+        <td class="title">Summe</td>
+        <td class="num" data-label="Raten pro Monat">{{ sum_of_rates|floatformat:2 }} €</td>
+        <td class="hide-empty"></td><td class="hide-empty"></td><td class="hide-empty"></td>
+        <td class="num" data-label="Kontostand">{{ total_balance|floatformat:2 }} €</td>
+        <td colspan="2" class="hide-empty"></td>
+      </tr>
+    </tbody>
+  </table>
   </div>
-
-</form>
+  <p class="muted">Kontostand = alle bisherigen Monatsraten (ab dem Monat der Erstellung, inkl. diesem Monat) + einmalige Ein-/Auszahlungen.
+    Eine positive Rate ist eine Einzahlung in den Topf, eine negative Rate eine monatliche Abbuchung (z.B. Miete, Kredit); der Kontostand zeigt dann, was bisher gezahlt wurde.</p>
+  {% else %}
+    <p class="muted">Noch keine Kategorie angelegt. Lege unten deine erste Kategorie an, z.B. „Auto“ oder „Urlaub“.</p>
+  {% endif %}
 </div>
 
-
-{%if attributes == "false" %}
-  <script>alert("Name der Kategorie und monatliche Einzahlungen müssen ausgefüllt werden")</script>
-{% elif false_var == "category_string_to_long" %}
-  <script>alert("der Name der Kategorie ist zu lang maximal 25 Zeichen")</script>
-{% else %}
-
-<div style="display: flex">
-
-  <div>
-
-    <div class="myDiv" style="width:200px">
-    <p class="Box_contents">Kategorie</p>
-    </div>
-
-    {%for x in attributes %}
-    <div class="myDiv" style="width:200px; display: flex">
-    <a href=/dashboard/change_data/?category={{x.category}}>{{x.category}}</a>
-    </div>
-    {% endfor %}
-
+<div class="row">
+  <div class="card">
+    <h2>Neue Kategorie</h2>
+    <form action="{% url 'dashboard' %}" method="post">
+      {% csrf_token %}
+      <label for="category_name">Name der Kategorie</label>
+      <input type="text" required id="category_name" name="category_name" placeholder="z.B. Urlaub" maxlength="25">
+      <label for="monthly_amount">Monatliche Rate in € (positiv = Einzahlung, negativ = Abbuchung)</label>
+      <input type="number" step="0.01" required id="monthly_amount" name="monthly_amount" placeholder="z.B. 100 oder -800">
+      <label for="comment">Kommentar (optional)</label>
+      <input type="text" id="comment" name="comment" maxlength="255" placeholder="z.B. Sommerurlaub 2027">
+      <button type="submit">Kategorie anlegen</button>
+    </form>
   </div>
 
-  <div>
-
-    <div class="myDiv" style="width:200px">
-    <p class="Box_contents">Einzahlungsrate pro Monat (aktuell)</p>
-    </div>
-
-    {%for x in attributes %}
-    <div class="myDiv" style="width:200px">
-    <p class="Box_contents">{{x.monthly_amount_value}}€</p>
-    </div>
-    {% endfor %}
-
+  <div class="card">
+    <h2>Ein-/Auszahlung buchen</h2>
+    <form action="{% url 'add_transaction' %}" method="post">
+      {% csrf_token %}
+      <label for="tx_category">Kategorie</label>
+      <select id="tx_category" name="category" required>
+        <option value="" disabled selected>Kategorie wählen</option>
+        {% for x in attributes %}<option value="{{ x.category }}">{{ x.category }}</option>{% endfor %}
+      </select>
+      <label for="tx_amount">Betrag in € (negativ = Auszahlung)</label>
+      <input type="number" step="0.01" required id="tx_amount" name="amount" placeholder="z.B. -150">
+      <label for="tx_comment">Kommentar (optional)</label>
+      <input type="text" id="tx_comment" name="comment" maxlength="255" placeholder="z.B. Reparatur">
+      <button type="submit" {% if not attributes %}disabled{% endif %}>Buchen</button>
+    </form>
   </div>
-
-  <div>
-
-    <div class="myDiv" style="width:200px">
-    <p class="Box_contents">Monate seit denen eingezahlt wird</p>
-    </div>
-
-    {%for x in attributes %}
-    <div class="myDiv" style="width:200px">
-    <p class="Box_contents">{{x.How_many_months_have_passed_since_the_category_was_created}}</p>
-    </div>
-    {% endfor %}
-  </div>
-
-  <div>
-
-    <div class="myDiv" style="width:200px">
-    <p class="Box_contents">eingezahlte Monatsraten</p>
-    </div>
-
-    {%for x in attributes %}
-    <div class="myDiv" style="width:200px">
-    <p class="Box_contents">{{x.total_monthly_payments}}</p>
-    </div>
-    {% endfor %}
-
-  </div>
-
-  <div>
-
-    <div class="myDiv" style="width:200px">
-    <p class="Box_contents">Gesamtbetrag</p>
-    </div>
-
-    {%for x in attributes %}
-    <div class="myDiv" style="width:200px">
-    <p class="Box_contents">{{x.new_amount}}</p>
-    </div>
-    {% endfor %}
-
-  </div>
-
-    <div>
-
-    <div class="myDiv" style="width:200px">
-    <p class="Box_contents">Kommentar</p>
-    </div>
-
-    {%for x in attributes %}
-    <div class="myDiv" style="width:200px">
-    <p class="Box_contents">{{x.comment}}</p>
-    </div>
-    {% endfor %}
-
-  </div>
-
-  <div>
-
-    <div class="myDiv" style="width:200px">
-    <p class="Box_contents">löschen</p>
-    </div>
-
-    {%for x in attributes %}
-    <div class="myDiv" style="width:200px">
-    <button type="submit" name="löschen" value={{ request.user.member.id }}>löschen</button>
-    </div>
-    {% endfor %}
-
-  </div>
-
 </div>
 
+<div class="card">
+  <h2>Ein- und Auszahlungen</h2>
+  {% if transactions %}
+  <div class="table-wrap">
+  <table class="stack">
+    <thead><tr><th>Datum</th><th>Kategorie</th><th class="num">Betrag</th><th>Kommentar</th><th></th></tr></thead>
+    <tbody>
+      {% for t in transactions %}
+      <tr>
+        <td data-label="Datum">{{ t.created|date:"d.m.Y H:i" }}</td>
+        <td class="title">{{ t.attribute.category }}</td>
+        <td class="num {% if t.amount < 0 %}neg{% else %}pos{% endif %}" data-label="Betrag">{% if t.amount > 0 %}+{% endif %}{{ t.amount|floatformat:2 }} €</td>
+        <td class="word{% if not t.comment %} hide-empty{% endif %}" data-label="Kommentar">{{ t.comment }}</td>
+        <td class="actions">
+          <form class="inline" action="{% url 'delete_transaction' %}" method="post"
+                onsubmit="return confirm('Buchung löschen?');">
+            {% csrf_token %}
+            <button type="submit" class="small danger" name="transaction_id" value="{{ t.id }}">löschen</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+    <p class="muted">Noch keine Ein- oder Auszahlungen.</p>
+  {% endif %}
+</div>
 
-
-
-{% endif %}
+{% endblock %}
