@@ -51,9 +51,9 @@ du Router, Firewall oder Portfreigaben anfassen musst. Jeder kann sich darunter 
 `/signup/` ein Konto anlegen. Dein Rechner muss dafür laufen und online sein; Beenden mit
 `Strg+C` schaltet Server und Tunnel ab.
 
-Die Adresse ändert sich bei jedem Start. `start url` zeigt die aktuelle an. Eine feste
-Adresse bekommst du mit einem eigenen Server (Abschnitt 5) oder einem kostenlosen
-Cloudflare-Konto mit eigener Domain (Abschnitt 5.3).
+Die Adresse ändert sich bei jedem Start. `start url` zeigt die aktuelle an. Eine **feste
+Adresse** bekommst du kostenlos mit `start tunnel tailscale` (Abschnitt 5.2) oder mit
+einem eigenen Server (Abschnitt 5).
 
 ## 2. Bedienung
 
@@ -243,6 +243,7 @@ Nach dem ersten Lauf steht der Kurzbefehl `start` zur Verfügung, der genau dass
 |---|---|
 | `start` (= `./start.sh`) | alles: installieren, Admin anlegen (nur beim ersten Mal), Server auf `0.0.0.0:8000`, Tunnel mit öffentlicher HTTPS-Adresse |
 | `start url` | zeigt die aktuelle öffentliche Adresse |
+| `start tunnel tailscale` / `cloudflare` / `off` | Tunnel-Art umschalten: feste Adresse mit Tailscale-Konto, wechselnde Adresse ohne Konto, oder kein Tunnel |
 | `start dev` | Entwicklungsserver auf `127.0.0.1:8000`, Debug an, lädt bei Codeänderungen neu |
 | `start dev 8080` | Entwicklungsserver auf anderem Port |
 | `start server` | nur der Server auf `0.0.0.0:8000`, ohne Tunnel (für eigene Server mit öffentlicher IP) |
@@ -296,7 +297,7 @@ Nutzern einen der folgenden Wege wählen.
 | Ziel | Weg |
 |---|---|
 | läuft nach einem Neustart des Rechners von selbst wieder | `start install-service` (Abschnitt 5.1), Adresse mit `start url` |
-| feste Adresse, die sich nicht ändert | Cloudflare-Konto mit eigener Domain (Abschnitt 5.2, „Feste Tunnel-Adresse“) |
+| feste Adresse, die sich nicht ändert | `start tunnel tailscale` mit kostenlosem Tailscale-Konto (Abschnitt 5.2, „Feste Adresse ohne eigenen Server“) |
 | rund um die Uhr, unabhängig vom eigenen Rechner | gemieteter Server (Abschnitt 5.2) oder Docker (5.3) oder fly.io (5.4) |
 
 ### 5.1 Eigener Rechner, dauerhaft (Tunnel + Autostart)
@@ -364,13 +365,44 @@ TUNNEL=off
 `BIND=127.0.0.1` sorgt dafür, dass die App nur noch über Caddy erreichbar ist; Port 8000
 kann dann in der Firewall wieder geschlossen werden.
 
-#### Feste Tunnel-Adresse mit Cloudflare-Konto
+#### Feste Adresse ohne eigenen Server: Tailscale Funnel (kostenlos)
 
-Wer keinen Server mieten will, aber eine feste Adresse braucht: kostenloses Cloudflare-Konto
-anlegen, eigene Domain dort verwalten und einen benannten Tunnel einrichten
-(`cloudflared tunnel login`, `cloudflared tunnel create ...`, siehe Cloudflare-Doku
-„Cloudflare Tunnel“). Dann in `.env` `TUNNEL=off` setzen und den benannten Tunnel auf
-`http://127.0.0.1:8000` zeigen lassen.
+Der Cloudflare-Schnelltunnel aus dem Schnellstart bekommt bei jedem Start eine neue
+Adresse. Eine **feste Adresse** gibt es kostenlos mit **Tailscale Funnel**: Du bekommst
+eine Adresse wie `https://laptop.tail1234.ts.net`, die bei jedem Start gleich bleibt, mit
+echtem HTTPS-Zertifikat. Nötig ist ein kostenloses Tailscale-Konto (Anmeldung mit Google,
+GitHub, Microsoft oder Apple), keine eigene Domain.
+
+```bash
+start tunnel tailscale     # einmalig umschalten
+start
+```
+
+Beim ersten Start passiert:
+
+1. Tailscale wird installiert (offizielles Installationsskript, fragt nach sudo).
+2. Ein Anmeldelink erscheint im Terminal. Im Browser öffnen, Konto anlegen oder anmelden.
+3. Beim ersten Funnel-Start verlangt Tailscale, dass du im Admin-Bereich (Link wird im
+   Terminal angezeigt) **Funnel** und **HTTPS certificates** einschaltest. Danach `start`
+   noch einmal ausführen.
+
+Ab dann zeigt `start` die feste Adresse an, und `start url` ebenfalls. Die Adresse setzt
+sich aus dem Rechnernamen und dem Namen deines Tailscale-Netzes zusammen; beides lässt sich
+im Tailscale-Admin ändern.
+
+Sicherheit: Die Verbindung ist Ende-zu-Ende per HTTPS verschlüsselt, das Zertifikat kommt
+von Let's Encrypt. Nur Port 8000 deines Rechners ist über die Adresse erreichbar, sonst
+nichts. Die Adresse ist öffentlich: Jeder, der sie kennt, kann die Login-Seite sehen und
+sich registrieren. Gib sie nur Leuten, die die App nutzen sollen.
+
+Zurück zum Schnelltunnel ohne Konto: `start tunnel cloudflare`. Kein Tunnel: `start tunnel off`.
+
+#### Feste Adresse mit eigener Domain bei Cloudflare
+
+Wer eine eigene Domain besitzt, kann sie kostenlos bei Cloudflare verwalten und einen
+benannten Tunnel einrichten (`cloudflared tunnel login`, `cloudflared tunnel create ...`,
+siehe Cloudflare-Doku „Cloudflare Tunnel“). Dann `start tunnel off` und den benannten
+Tunnel auf `http://127.0.0.1:8000` zeigen lassen.
 
 ### 5.3 Variante B: Docker
 
@@ -419,7 +451,7 @@ einliest. Die Datei ist von Git ausgeschlossen.
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | leer | bei HTTPS hinter Proxy: `https://deine-domain` |
 | `BIND` | `0.0.0.0:8000` | Adresse und Port für gunicorn |
 | `WEB_CONCURRENCY` | `3` | Anzahl gunicorn-Worker |
-| `TUNNEL` | `cloudflare` | `cloudflare` = bei `start` öffentliche Adresse per Cloudflare-Schnelltunnel holen; `off` = kein Tunnel |
+| `TUNNEL` | `cloudflare` | `cloudflare` = wechselnde Adresse ohne Konto; `tailscale` = feste Adresse mit Tailscale-Konto; `off` = kein Tunnel. Umschalten mit `start tunnel …` |
 | `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_PASSWORD` | leer | nur für unbeaufsichtigte Installation: Admin-Konto ohne Rückfrage anlegen |
 | `DATABASE_URL` | SQLite `local.sqlite3` | andere Datenbank, z. B. `postgres://user:passwort@127.0.0.1:5432/financial_planer` |
 
@@ -598,7 +630,8 @@ bestehende Datenbanken (z. B. auf fly.io) darauf aufbauen.
 Terminal öffnen. Prüfen, dass `~/.local/bin` im `PATH` liegt (`echo $PATH`).
 
 **Es erscheint keine öffentliche Adresse.** Der Tunnel braucht Internet. Prüfe
-`.tools/tunnel.log`. Steht in `.env` `TUNNEL=off`, wird kein Tunnel gestartet. Die
+`.tools/tunnel.log`. Bei Tailscale: Im Admin-Bereich müssen „Funnel“ und „HTTPS
+certificates“ eingeschaltet sein; die Meldung im Terminal nennt den Link. Steht in `.env` `TUNNEL=off`, wird kein Tunnel gestartet. Die
 Adresse ist erst 5 bis 20 Sekunden nach dem Start weltweit erreichbar; das Skript wartet
 darauf, bevor es sie anzeigt.
 

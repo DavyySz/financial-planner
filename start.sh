@@ -5,6 +5,8 @@
 #                                  Server starten und per Tunnel eine oeffentliche HTTPS-Adresse holen,
 #                                  die von jedem Geraet in jedem Netz erreichbar ist.
 #   start url                      zeigt die aktuelle oeffentliche Adresse
+#   start tunnel tailscale         feste Adresse (kostenloses Tailscale-Konto, HTTPS); tunnel cloudflare = wechselnde
+#                                  Adresse ohne Konto (Standard); tunnel off = kein Tunnel
 #   start dev                      Entwicklungsserver auf http://127.0.0.1:8000 (Debug an)
 #   start server                   nur der Server auf 0.0.0.0:8000, ohne Tunnel (fuer eigene Server)
 #   start install-service          als systemd-Dienst einrichten (Autostart beim Boot, braucht sudo)
@@ -92,7 +94,11 @@ DJANGO_CSRF_TRUSTED_ORIGINS=
 # Adresse/Port des Servers und Anzahl Worker
 BIND=0.0.0.0:8000
 WEB_CONCURRENCY=3
-# Tunnel fuer eine oeffentliche Adresse ohne eigenen Server: cloudflare | off
+# Tunnel fuer eine oeffentliche Adresse ohne eigenen Server:
+#   cloudflare = ohne Konto, Adresse aendert sich bei jedem Start (Standard)
+#   tailscale  = feste Adresse https://<rechner>.<netz>.ts.net, kostenloses Tailscale-Konto noetig
+#   off        = kein Tunnel (eigener Server mit oeffentlicher IP)
+# Umschalten mit:  start tunnel tailscale
 TUNNEL=cloudflare
 # Andere Datenbank, z.B. DATABASE_URL=postgres://user:pass@127.0.0.1:5432/financial_planer
 #DATABASE_URL=
@@ -215,6 +221,74 @@ start_tunnel() {   # start_tunnel PORT
   echo "=============================================================="
 }
 
+# ---- Tailscale Funnel: feste Adresse ---------------------------------------
+ensure_tailscale() {
+  command -v tailscale >/dev/null 2>&1 && return 0
+  if [ ! -t 0 ]; then warn "Tailscale ist nicht installiert. Einmal im Terminal  start  ausfuehren."; return 1; fi
+  say "Installiere Tailscale (offizielles Installationsskript, braucht sudo) ..."
+  mkdir -p "$TOOLS"
+  download "https://tailscale.com/install.sh" "$TOOLS/tailscale-install.sh" || { warn "Download fehlgeschlagen."; return 1; }
+  sudo sh "$TOOLS/tailscale-install.sh" || { warn "Installation fehlgeschlagen."; return 1; }
+  command -v tailscale >/dev/null 2>&1
+}
+
+tailscale_logged_in() {
+  tailscale status --json 2>/dev/null | "$PY" -c 'import sys,json; d=json.load(sys.stdin); sys.exit(0 if d.get("BackendState")=="Running" else 1)' 2>/dev/null
+}
+
+start_tailscale_funnel() {   # start_tailscale_funnel PORT
+  ensure_tailscale || return 0
+  if ! tailscale_logged_in; then
+    if [ ! -t 0 ]; then warn "Tailscale ist nicht angemeldet. Einmal im Terminal  start  ausfuehren."; return 0; fi
+    echo
+    echo "=============================================================="
+    echo " Tailscale einrichten (einmalig, kostenlos):"
+    echo " Gleich erscheint ein Link. Im Browser oeffnen und mit Google,"
+    echo " GitHub, Microsoft oder Apple anmelden. Danach geht es hier weiter."
+    echo "=============================================================="
+    sudo tailscale up || { warn "Tailscale-Anmeldung abgebrochen."; return 0; }
+  fi
+  # erlaubt dem normalen Nutzer, Funnel ohne sudo zu steuern
+  sudo -n tailscale set --operator="$(id -un)" 2>/dev/null || tailscale set --operator="$(id -un)" 2>/dev/null || true
+
+  local log="$TOOLS/tunnel.log"
+  mkdir -p "$TOOLS"; : > "$log"
+  tailscale funnel "$1" >"$log" 2>&1 &
+  TUNNEL_PID=$!
+  local url="" i
+  for i in $(seq 1 30); do
+    url="$(grep -o 'https://[A-Za-z0-9.-]*\.ts\.net' "$log" | head -1 || true)"
+    [ -n "$url" ] && break
+    if ! kill -0 "$TUNNEL_PID" 2>/dev/null; then break; fi
+    sleep 1
+  done
+  if [ -z "$url" ]; then
+    echo
+    warn "Funnel konnte nicht gestartet werden. Meldung von Tailscale:"
+    sed 's/^/   /' "$log"
+    echo
+    echo "   Meist fehlt noch die Freigabe im Tailscale-Admin: Den oben genannten Link oeffnen,"
+    echo "   'Funnel' und 'HTTPS certificates' aktivieren, dann  start  erneut ausfuehren."
+    echo "   Alternative ohne Konto:  start tunnel cloudflare"
+    TUNNEL_PID=""
+    return 0
+  fi
+  for i in $(seq 1 40); do
+    "$PY" -c "import urllib.request as u; u.urlopen('$url/login/', timeout=10)" 2>/dev/null && break
+    sleep 3
+  done
+  echo "$url" > "$URL_FILE"
+  echo
+  echo "=============================================================="
+  echo "  FESTE OEFFENTLICHE ADRESSE (HTTPS, bleibt bei jedem Start gleich):"
+  echo
+  echo "      $url"
+  echo
+  echo "  Konto anlegen:  $url/signup/"
+  echo "  Admin:          $url/adminboard/"
+  echo "=============================================================="
+}
+
 run_server() {   # run_server [BIND] [mit_tunnel]
   ensure_env_file
   export DJANGO_DEBUG=0
@@ -245,8 +319,12 @@ run_server() {   # run_server [BIND] [mit_tunnel]
   done
   say "Server laeuft auf $bind  (lokal: http://127.0.0.1:$port/)"
 
-  if [ "$with_tunnel" = "yes" ] && [ "${TUNNEL:-cloudflare}" != "off" ]; then
-    start_tunnel "$port"
+  if [ "$with_tunnel" = "yes" ]; then
+    case "${TUNNEL:-cloudflare}" in
+      off) ;;
+      tailscale) start_tailscale_funnel "$port" ;;
+      *) start_tunnel "$port" ;;
+    esac
   fi
   say "Beenden mit Strg+C."
   wait "$SERVER_PID" || true
@@ -265,6 +343,16 @@ case "${1:-}" in
     ;;
   url)
     if [ -s "$URL_FILE" ]; then cat "$URL_FILE"; else echo "Kein Tunnel aktiv. Starten mit:  start"; exit 1; fi
+    ;;
+  tunnel)
+    case "${2:-}" in
+      cloudflare|tailscale|off) ;;
+      *) echo "Aufruf:  start tunnel cloudflare | tailscale | off"; exit 1 ;;
+    esac
+    ensure_env_file
+    if grep -q '^TUNNEL=' .env; then sed -i "s/^TUNNEL=.*/TUNNEL=$2/" .env; else echo "TUNNEL=$2" >> .env; fi
+    say "Tunnel auf '$2' gestellt. Wirksam beim naechsten  start"
+    [ "$2" = tailscale ] && echo "   Beim naechsten Start wirst du einmalig durch die Tailscale-Anmeldung gefuehrt."
     ;;
   dev)
     "$PY" manage.py migrate --noinput
