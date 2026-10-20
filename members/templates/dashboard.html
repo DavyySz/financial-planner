@@ -19,11 +19,11 @@
   {% if salary != None %}
     <div class="kpi">
       <div><div class="label">Einkommen</div><div class="value">{{ salary|floatformat:2 }} €</div></div>
-      <div><div class="label">− Einzahlungen in Töpfe</div><div class="value">{{ sum_of_deposits|floatformat:2 }} €</div></div>
-      <div><div class="label">− monatliche Abbuchungen</div><div class="value">{{ sum_of_debits|floatformat:2|cut:"-" }} €</div></div>
-      <div><div class="label">= frei verfügbar</div>
+      <div><div class="label">− monatlich in Töpfe zurückgelegt</div><div class="value">{{ sum_of_deposits|floatformat:2 }} €</div></div>
+      {% if sum_of_debits %}<div><div class="label">+ monatlich aus Töpfen zurück</div><div class="value">{{ sum_of_debits|floatformat:2|cut:"-" }} €</div></div>{% endif %}
+      <div><div class="label">= Gesamtguthaben pro Monat (frei verfügbar)</div>
         <div class="value {% if remaining < 0 %}neg{% else %}pos{% endif %}">{{ remaining|floatformat:2 }} €</div></div>
-      <div><div class="label">Guthaben in allen Töpfen</div><div class="value">{{ total_balance|floatformat:2 }} €</div></div>
+      <div><div class="label">in allen Töpfen angespart</div><div class="value{% if total_balance < 0 %} neg{% endif %}">{{ total_balance|floatformat:2 }} €</div></div>
     </div>
   {% else %}
     <p class="muted">Gib dein monatliches Einkommen an, um zu sehen, was nach allen Raten übrig bleibt.</p>
@@ -78,8 +78,9 @@
     </tbody>
   </table>
   </div>
-  <p class="muted">Kontostand = alle bisherigen Monatsraten (ab dem Monat der Erstellung, inkl. diesem Monat) + einmalige Ein-/Auszahlungen.
-    Eine positive Rate ist eine Einzahlung in den Topf, eine negative Rate eine monatliche Abbuchung (z.B. Miete, Kredit); der Kontostand zeigt dann, was bisher gezahlt wurde.</p>
+  <p class="muted">Die Monatsrate ist eine Umbuchung zwischen Gesamtguthaben und Topf: +50 € heißt, jeden Monat wandern 50 € vom Gesamtguthaben in den Topf;
+    −30 € heißt, der Topf gibt jeden Monat 30 € ans Gesamtguthaben zurück. Kontostand = alle bisherigen Monatsraten (ab dem Monat der Erstellung, inkl. diesem Monat)
+    + einmalige Ein-/Auszahlungen. Aus einem Topf kannst du jederzeit per Buchung Geld entnehmen (negativer Betrag) oder zusätzlich einlegen (positiver Betrag).</p>
   {% else %}
     <p class="muted">Noch keine Kategorie angelegt. Lege unten deine erste Kategorie an, z.B. „Auto“ oder „Urlaub“.</p>
   {% endif %}
@@ -92,7 +93,7 @@
       {% csrf_token %}
       <label for="category_name">Name der Kategorie</label>
       <input type="text" required id="category_name" name="category_name" placeholder="z.B. Urlaub" maxlength="25">
-      <label for="monthly_amount">Monatliche Rate in € (positiv = Einzahlung, negativ = Abbuchung)</label>
+      <label for="monthly_amount">Monatliche Rate in € (positiv = in den Topf, negativ = aus dem Topf zurück)</label>
       <input type="number" step="0.01" required id="monthly_amount" name="monthly_amount" placeholder="z.B. 100 oder -800">
       <label for="comment">Kommentar (optional)</label>
       <input type="text" id="comment" name="comment" maxlength="255" placeholder="z.B. Sommerurlaub 2027">
@@ -109,7 +110,7 @@
         <option value="" disabled selected>Kategorie wählen</option>
         {% for x in attributes %}<option value="{{ x.category }}">{{ x.category }}</option>{% endfor %}
       </select>
-      <label for="tx_amount">Betrag in € (negativ = Auszahlung)</label>
+      <label for="tx_amount">Betrag in € (positiv = einlegen, negativ = entnehmen)</label>
       <input type="number" step="0.01" required id="tx_amount" name="amount" placeholder="z.B. -150">
       <label for="tx_comment">Kommentar (optional)</label>
       <input type="text" id="tx_comment" name="comment" maxlength="255" placeholder="z.B. Reparatur">

@@ -70,7 +70,7 @@ def dashboard(request):
         if not name or len(name) > MAX_CATEGORY_LENGTH:
             messages.error(request, f"Der Kategoriename muss 1 bis {MAX_CATEGORY_LENGTH} Zeichen lang sein.")
         elif rate is None:
-            messages.error(request, "Die monatliche Rate muss eine Zahl sein (positiv = Einzahlung, negativ = Abbuchung).")
+            messages.error(request, "Die monatliche Rate muss eine Zahl sein (positiv = in den Topf, negativ = aus dem Topf zurück).")
         elif Check_whether_category_is_duplicated(member, name):
             messages.error(request, f"Die Kategorie „{name}“ gibt es schon.")
         else:
@@ -89,13 +89,14 @@ def dashboard(request):
 
     attributes = list(member.attributes.all())
     rates = [a.current_rate for a in attributes]
-    sum_of_rates = sum(rates, Decimal("0"))                          # Summe aller Raten (mit Vorzeichen)
-    sum_of_deposits = sum((r for r in rates if r > 0), Decimal("0"))  # Einzahlungen in Toepfe
-    sum_of_debits = sum((r for r in rates if r < 0), Decimal("0"))    # monatliche Abbuchungen (negativ)
+    sum_of_rates = sum(rates, Decimal("0"))                          # Netto-Umbuchung in die Toepfe pro Monat
+    sum_of_deposits = sum((r for r in rates if r > 0), Decimal("0"))  # vom Gesamtguthaben in Toepfe zurueckgelegt
+    sum_of_debits = sum((r for r in rates if r < 0), Decimal("0"))    # aus Toepfen zurueck ins Gesamtguthaben (negativ)
     total_balance = sum((a.balance for a in attributes), Decimal("0"))
     salary = member.monthly_salary
-    # Einzahlungen und Abbuchungen verringern beide das frei verfuegbare Geld
-    remaining = salary - sum_of_deposits + sum_of_debits if salary is not None else None
+    # Die Monatsrate ist eine Umbuchung: +50 heisst 50 in den Topf (Gesamtguthaben -50),
+    # -30 heisst 30 aus dem Topf zurueck (Gesamtguthaben +30).
+    remaining = salary - sum_of_rates if salary is not None else None
     transactions = Transaction.objects.filter(attribute__member=member).select_related("attribute")
 
     return render(request, "dashboard.html", {
@@ -123,7 +124,7 @@ def change_data(request):
     if request.method == "POST":
         rate = parse_amount(request.POST.get("monthly_amount_new"))
         if rate is None:
-            messages.error(request, "Die monatliche Rate muss eine Zahl sein (positiv = Einzahlung, negativ = Abbuchung).")
+            messages.error(request, "Die monatliche Rate muss eine Zahl sein (positiv = in den Topf, negativ = aus dem Topf zurück).")
             return redirect(f"{request.path}?category={attribute.category}")
         attribute.set_rate(rate)
         comment = (request.POST.get("comment_change") or "").strip()

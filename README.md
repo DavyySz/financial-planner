@@ -87,19 +87,19 @@ regelmäßige Einnahmen zusammen). Darunter erscheinen vier Kennzahlen:
 | Kennzahl | Bedeutung |
 |---|---|
 | Einkommen | der eingetragene Betrag |
-| Einzahlungen in Töpfe | Summe aller positiven Raten (Geld, das monatlich in Kategorien zurückgelegt wird) |
-| monatliche Abbuchungen | Summe aller negativen Raten (z. B. Miete, Kredit), als Betrag angezeigt |
-| frei verfügbar | Einkommen minus Einzahlungen minus Abbuchungen; rot, wenn negativ |
-| Guthaben in allen Töpfen | Summe der Kontostände aller Kategorien |
+| monatlich in Töpfe zurückgelegt | Summe aller positiven Raten: Geld, das jeden Monat vom Gesamtguthaben in Töpfe wandert |
+| monatlich aus Töpfen zurück | Summe aller negativen Raten: Geld, das Töpfe jeden Monat ans Gesamtguthaben zurückgeben (nur sichtbar, wenn vorhanden) |
+| Gesamtguthaben pro Monat (frei verfügbar) | Einkommen minus zurückgelegt plus zurück; rot, wenn negativ |
+| in allen Töpfen angespart | Summe der Kontostände aller Töpfe |
 
 **Kategorien / Budgettöpfe.** Eine Tabelle mit allen Kategorien. Pro Zeile:
 
 | Spalte | Bedeutung |
 |---|---|
 | Kategorie | Name; Klick öffnet die Änderungsseite |
-| Rate pro Monat | aktuell gültige monatliche Rate; positiv = Einzahlung in den Topf, negativ (rot) = monatliche Abbuchung |
+| Rate pro Monat | aktuell gültige monatliche Umbuchung; positiv = vom Gesamtguthaben in den Topf, negativ (rot) = aus dem Topf zurück |
 | Monate aktiv | seit wie vielen Monaten die Rate läuft, Erstellungsmonat zählt mit |
-| eingezahlte Raten | Summe aller Monatsraten seit Erstellung (bei Abbuchungen negativ: bisher gezahlt) |
+| eingezahlte Raten | Summe aller Monatsraten seit Erstellung |
 | Ein-/Auszahlungen | Summe der einmaligen Buchungen (grün positiv, rot negativ) |
 | Kontostand | eingezahlte Raten plus Ein-/Auszahlungen; rot, wenn negativ |
 | Kommentar | freier Text |
@@ -107,11 +107,14 @@ regelmäßige Einnahmen zusammen). Darunter erscheinen vier Kennzahlen:
 
 **Neue Kategorie** und **Ein-/Auszahlung buchen.** Zwei Formulare nebeneinander.
 Eine Kategorie braucht einen Namen (max. 25 Zeichen, pro Nutzer eindeutig, Groß-/
-Kleinschreibung egal) und eine monatliche Rate. Die Rate darf negativ sein: `100` legt
-jeden Monat 100 € in den Topf zurück (Sparen), `-800` ist eine monatliche Abbuchung wie
-Miete oder eine Kreditrate. Bei einer Abbuchung wird der Kontostand der Kategorie jeden
-Monat um den Betrag kleiner und zeigt so, was bisher gezahlt wurde. Eine Buchung braucht eine Kategorie und
-einen Betrag: positiv = Einzahlung, negativ = Auszahlung (z. B. `-150` für eine Reparatur).
+Kleinschreibung egal) und eine monatliche Rate. Die Rate ist eine **Umbuchung zwischen
+Gesamtguthaben und Topf**: `50` heißt, jeden Monat wandern 50 € vom Gesamtguthaben in den
+Topf (der Topf wächst, das frei verfügbare Geld sinkt um 50 €). `-30` heißt, der Topf gibt
+jeden Monat 30 € ans Gesamtguthaben zurück (der Topf schrumpft, frei verfügbar steigt um
+30 €). Eine Buchung braucht eine Kategorie und
+einen Betrag: positiv = zusätzlich in den Topf einlegen, negativ = aus dem Topf entnehmen
+(z. B. `-150`, wenn aus dem Autotopf eine Reparatur bezahlt wird). Buchungen ändern nur den
+Kontostand des Topfs, nicht die monatliche Übersicht.
 Beträge dürfen mit Komma oder Punkt geschrieben werden (`99,90` oder `99.90`).
 
 **Ein- und Auszahlungen.** Liste aller Buchungen, neueste zuerst, mit Löschen-Button.
@@ -207,13 +210,13 @@ $$
 
 $$
 \text{Kontostand} = \text{Raten} + \sum \text{Buchungen},\qquad
-\text{frei} = \text{Einkommen} - \sum_{\text{Kategorien}} \lvert r_{\text{aktuell}} \rvert
+\text{Gesamtguthaben} = \text{Einkommen} - \sum_{\text{Kategorien}} r_{\text{aktuell}}
 $$
 
-Raten gehen mit Vorzeichen in die Historie und den Kontostand ein (eine Abbuchung von
-$-800$ € über 3 Monate ergibt einen Kontostand von $-2400$ €). Für den frei verfügbaren
-Betrag zählt der Betrag ohne Vorzeichen, weil sowohl Einzahlungen in Töpfe als auch
-Abbuchungen das Einkommen verringern.
+Die Rate ist eine Umbuchung mit Vorzeichen: Was in einen Topf fließt, fehlt im
+Gesamtguthaben, und was ein Topf zurückgibt, kommt dem Gesamtguthaben zugute. Beispiel:
+Auto $+50$ € und ein Topf mit $-30$ € ergeben $\text{Gesamtguthaben} = \text{Einkommen} - 50 + 30$;
+der Autotopf hat nach 3 Monaten $150$ €, der andere $-90$ €.
 
 ### 3.3 Beispiel
 

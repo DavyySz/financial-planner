@@ -106,18 +106,23 @@ class ViewTests(TestCase):
         self.client.post(reverse("delete_category"), {"attribute_id": a.id})
         self.assertEqual(MemberAttribute.objects.count(), 0)
 
-    def test_negative_rate_is_a_monthly_debit(self):
+    def test_rate_is_a_transfer_between_total_and_pot(self):
+        """+50 Auto: Topf +50/Monat, Gesamtguthaben -50. -30 Alt: Topf -30/Monat, Gesamtguthaben +30."""
         self.client.post(reverse("set_salary"), {"monthly_salary": "2500"})
-        self.client.post(reverse("dashboard"), {"category_name": "Urlaub", "monthly_amount": "100"})
-        self.client.post(reverse("dashboard"), {"category_name": "Miete", "monthly_amount": "-800"})
-        miete = MemberAttribute.objects.get(category="Miete")
-        self.assertEqual(miete.current_rate, Decimal("-800"))
-        self.assertEqual(miete.balance, Decimal("-800"))      # erster Monat: 800 gezahlt
+        self.client.post(reverse("dashboard"), {"category_name": "Auto", "monthly_amount": "50"})
+        self.client.post(reverse("dashboard"), {"category_name": "Alt", "monthly_amount": "-30"})
+        auto = MemberAttribute.objects.get(category="Auto")
+        alt = MemberAttribute.objects.get(category="Alt")
+        self.assertEqual(auto.balance, Decimal("50"))
+        self.assertEqual(alt.balance, Decimal("-30"))
         r = self.client.get(reverse("dashboard"))
-        self.assertEqual(r.context["sum_of_deposits"], Decimal("100"))
-        self.assertEqual(r.context["sum_of_debits"], Decimal("-800"))
-        self.assertEqual(r.context["remaining"], Decimal("1600"))   # 2500 - 100 - 800
-        self.assertEqual(r.context["total_balance"], Decimal("-700"))
+        self.assertEqual(r.context["sum_of_deposits"], Decimal("50"))
+        self.assertEqual(r.context["sum_of_debits"], Decimal("-30"))
+        self.assertEqual(r.context["remaining"], Decimal("2480"))   # 2500 - 50 + 30
+        self.assertEqual(r.context["total_balance"], Decimal("20"))
+        # Entnahme aus dem Autotopf per Buchung
+        self.client.post(reverse("add_transaction"), {"category": "Auto", "amount": "-20", "comment": "Reifen"})
+        self.assertEqual(MemberAttribute.objects.get(category="Auto").balance, Decimal("30"))
 
     def test_invalid_amount_shows_error(self):
         r = self.client.post(reverse("dashboard"), {"category_name": "Auto", "monthly_amount": "abc"}, follow=True)

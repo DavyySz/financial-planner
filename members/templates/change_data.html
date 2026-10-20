@@ -14,7 +14,7 @@
     <form action="{% url 'change_data' %}" method="post">
       {% csrf_token %}
       <input type="hidden" name="category" value="{{ attribute.category }}">
-      <label for="monthly_amount_new">Monatliche Rate in € (positiv = Einzahlung, negativ = Abbuchung)</label>
+      <label for="monthly_amount_new">Monatliche Rate in € (positiv = in den Topf, negativ = aus dem Topf zurück)</label>
       <input type="number" step="0.01" required id="monthly_amount_new" name="monthly_amount_new"
              value="{{ attribute.current_rate|unlocalize }}">
       <label for="comment_change">Kommentar (leer lassen = unverändert)</label>
