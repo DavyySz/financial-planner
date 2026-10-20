@@ -388,12 +388,16 @@ DOMAIN=finanzen.example.de docker compose -f docker-compose.yml -f docker-compos
 Datenbank und Secret-Key liegen im Docker-Volume `fp-data`. Einstellungen können in einer
 `.env` neben der `docker-compose.yml` stehen.
 
-### 5.4 Variante C: fly.io
+### 5.4 Variante C: fly.io (kostenpflichtig, nicht mehr genutzt)
 
-`fly.toml` und `Dockerfile` sind für fly.io vorbereitet. Dort `DATABASE_URL` (Postgres)
-und `DJANGO_SECRET_KEY` als Secrets setzen, dann `fly deploy`. Migrationen laufen beim
-Release automatisch. Die GitHub-Action in `.github/workflows/fly-deploy.yml` deployt bei
-jedem Push auf `main`.
+`fly.toml` und `Dockerfile` sind für fly.io vorbereitet, werden aber nicht mehr benötigt:
+Alle anderen Wege in dieser Anleitung sind kostenlos. Die GitHub-Action
+`.github/workflows/fly-deploy.yml` startet **nur noch manuell** (GitHub → Actions →
+„Run workflow“), ein Push löst kein Deployment mehr aus.
+
+Damit bei fly.io keine Gebühren mehr anfallen, im fly.io-Dashboard (<https://fly.io/dashboard>)
+die App `financial-planer-2` und die zugehörige Postgres-App löschen („Settings → Delete app“)
+und unter „Billing“ die Zahlungsmethode entfernen. Das geht nur dort mit deinem Login.
 
 ---
 

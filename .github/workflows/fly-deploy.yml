@@ -1,15 +1,15 @@
-# See https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/
+# Auslieferung auf fly.io - NUR noch manuell ueber GitHub > Actions > "Run workflow".
+# Automatisches Deployen bei jedem Push ist abgeschaltet, damit keine Kosten bei fly.io entstehen.
+# Die App laeuft stattdessen kostenlos per ./start.sh (siehe README).
 
 name: Fly Deploy
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 jobs:
   deploy:
     name: Deploy app
     runs-on: ubuntu-latest
-    concurrency: deploy-group    # optional: ensure only one action runs at a time
+    concurrency: deploy-group
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
